@@ -189,6 +189,7 @@ const DashboardModule = {
       else if (lowerName.includes('english') && (log.englishSeconds || 0) >= (CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600)) isCompleted = true;
       else if (lowerName.includes('gym') && log.gymAttended) isCompleted = true;
       else if (lowerName.includes('sleep') && log.sleepHours) isCompleted = true;
+      else if (log.customRoutines && Array.isArray(log.customRoutines) && log.customRoutines.includes(r.id)) isCompleted = true;
 
       items.push({
         ...r,
@@ -202,6 +203,141 @@ const DashboardModule = {
     });
 
     return items.sort((a, b) => a.startMins - b.startMins);
+  },
+
+  /**
+   * 1-Tap Quick Action to Toggle Any Schedule Item directly from the Home Dashboard
+   */
+  toggleRoutineCompleted(routineId) {
+    const todayISO = DateUtils.getTodayISO();
+    const log = StorageService.getDayLog(todayISO);
+    const routines = StorageService.getRoutines();
+    const routine = routines.find(r => r.id === routineId);
+    if (!routine) return;
+
+    const lowerName = (routine.name || '').toLowerCase();
+    const updates = {};
+    let customRoutines = Array.isArray(log.customRoutines) ? [...log.customRoutines] : [];
+    const isCustomCompleted = customRoutines.includes(routineId);
+
+    // 1. 5 Daily Prayers
+    if (lowerName.includes('fajr') || routine.anchor === 'prayer-fajr') {
+      const isDone = log.prayers && log.prayers.fajr && log.prayers.fajr.status === 'COMPLETED';
+      updates.prayers = {
+        ...(log.prayers || {}),
+        fajr: {
+          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
+          location: isDone ? '' : 'MASJID',
+          timestamp: isDone ? null : DateUtils.getNowISO()
+        }
+      };
+      UI.showToast(`Fajr ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } else if (lowerName.includes('dhuhr') || routine.anchor === 'prayer-dhuhr') {
+      const isDone = log.prayers && log.prayers.dhuhr && log.prayers.dhuhr.status === 'COMPLETED';
+      updates.prayers = {
+        ...(log.prayers || {}),
+        dhuhr: {
+          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
+          location: isDone ? '' : 'MASJID',
+          timestamp: isDone ? null : DateUtils.getNowISO()
+        }
+      };
+      UI.showToast(`Dhuhr ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } else if (lowerName.includes('asr') || routine.anchor === 'prayer-asr') {
+      const isDone = log.prayers && log.prayers.asr && log.prayers.asr.status === 'COMPLETED';
+      updates.prayers = {
+        ...(log.prayers || {}),
+        asr: {
+          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
+          location: isDone ? '' : 'MASJID',
+          timestamp: isDone ? null : DateUtils.getNowISO()
+        }
+      };
+      UI.showToast(`Asr ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } else if (lowerName.includes('maghrib') || routine.anchor === 'prayer-maghrib') {
+      const isDone = log.prayers && log.prayers.maghrib && log.prayers.maghrib.status === 'COMPLETED';
+      updates.prayers = {
+        ...(log.prayers || {}),
+        maghrib: {
+          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
+          location: isDone ? '' : 'MASJID',
+          timestamp: isDone ? null : DateUtils.getNowISO()
+        }
+      };
+      UI.showToast(`Maghrib ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } else if (lowerName.includes('isha') || routine.anchor === 'prayer-isha') {
+      const isDone = log.prayers && log.prayers.isha && log.prayers.isha.status === 'COMPLETED';
+      updates.prayers = {
+        ...(log.prayers || {}),
+        isha: {
+          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
+          location: isDone ? '' : 'MASJID',
+          timestamp: isDone ? null : DateUtils.getNowISO()
+        }
+      };
+      UI.showToast(`Isha ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 2. Tahajjud
+    else if (lowerName.includes('tahajjud') || routine.anchor === 'relative-pre-fajr') {
+      const isDone = log.tahajjud === 'COMPLETED';
+      updates.tahajjud = isDone ? 'MISSED' : 'COMPLETED';
+      UI.showToast(`Tahajjud ${isDone ? 'marked missed' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 3. Morning Qur’an Tafsir
+    else if (lowerName.includes('qur') && (lowerName.includes('morning') || lowerName.includes('tafsir') || routine.anchor === 'after-fajr')) {
+      const isDone = log.quranTafsir === 'COMPLETED';
+      updates.quranTafsir = isDone ? 'NOT_COMPLETED' : 'COMPLETED';
+      UI.showToast(`Morning Qur’an Tafsir ${isDone ? 'marked incomplete' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 4. Evening Qur’an Recitation
+    else if (lowerName.includes('qur') && (lowerName.includes('evening') || lowerName.includes('recitation') || routine.anchor === 'after-maghrib')) {
+      const isDone = log.quranRecitation === 'COMPLETED';
+      updates.quranRecitation = isDone ? 'NOT_COMPLETED' : 'COMPLETED';
+      UI.showToast(`Evening Qur’an Recitation ${isDone ? 'marked incomplete' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 5. ADCD Class
+    else if (lowerName.includes('adcd')) {
+      const isDone = log.adcdAttended === 'ATTENDED';
+      updates.adcdAttended = isDone ? 'NOT_ATTENDED' : 'ATTENDED';
+      UI.showToast(`ADCD Class ${isDone ? 'marked not attended' : 'marked attended ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 6. Gym Session
+    else if (lowerName.includes('gym')) {
+      const isDone = Boolean(log.gymAttended);
+      updates.gymAttended = !isDone;
+      UI.showToast(`Gym Workout ${isDone ? 'marked unattended' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 7. Cyber Deep Work (Toggles 4h completed target)
+    else if (lowerName.includes('cyber')) {
+      const targetSecs = CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400;
+      const isDone = (log.cyberSeconds || 0) >= targetSecs;
+      updates.cyberSeconds = isDone ? 0 : targetSecs;
+      UI.showToast(`Cyber Deep Work ${isDone ? 'reset' : 'completed (4h) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 8. English Practice (Toggles 1h target)
+    else if (lowerName.includes('english')) {
+      const targetSecs = CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600;
+      const isDone = (log.englishSeconds || 0) >= targetSecs;
+      updates.englishSeconds = isDone ? 0 : targetSecs;
+      UI.showToast(`English Practice ${isDone ? 'reset' : 'completed (1h) ✓'}`, isDone ? 'info' : 'success', 2000);
+    } 
+    // 9. General / Custom Routine (Breakfast, Commute, Review, etc.)
+    else {
+      if (isCustomCompleted) {
+        customRoutines = customRoutines.filter(id => id !== routineId);
+        UI.showToast(`${routine.name} marked incomplete`, 'info', 2000);
+      } else {
+        customRoutines.push(routineId);
+        UI.showToast(`${routine.name} marked completed ✓`, 'success', 2000);
+      }
+      updates.customRoutines = customRoutines;
+    }
+
+    // Save and re-render
+    StorageService.saveDayLog(todayISO, updates);
+    UI.vibrate(10);
+    this.renderDashboard();
+    window.dispatchEvent(new CustomEvent('batman:data-updated'));
   },
 
   updateActiveActivity() {
@@ -308,20 +444,38 @@ const DashboardModule = {
       }
 
       return `
-        <div class="prayer-row ${statusClass}" style="padding: 10px 0; ${highlightStyle}">
-          <div class="prayer-info">
+        <div class="prayer-row ${statusClass}" style="padding: 10px 0; ${highlightStyle} display: flex; align-items: center; justify-content: space-between;">
+          <div class="prayer-info" style="flex: 1; cursor: pointer; padding-right: 8px;" data-action="toggle-routine" data-routine-id="${item.id}">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-weight: 800; font-family: var(--font-mono); font-size: var(--text-sm); color: ${item.isCompleted ? 'var(--status-success)' : (isCurrent ? 'var(--accent-primary)' : 'var(--text-muted)')};">${statusSymbol}</span>
-              <span style="font-size: var(--text-sm); font-weight: ${isCurrent ? '700' : '600'}; color: ${isCurrent ? 'var(--text-primary)' : (item.isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)')};">${item.name}</span>
+              <span style="font-size: var(--text-sm); font-weight: ${isCurrent ? '700' : '600'}; color: ${isCurrent ? 'var(--text-primary)' : (item.isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)')}; text-decoration: ${item.isCompleted ? 'line-through' : 'none'};">${item.name}</span>
             </div>
             <span class="prayer-time" style="margin-left: 20px;">${DateUtils.format12Hour(item.startTimeStr)} – ${DateUtils.format12Hour(item.endTimeStr)}</span>
           </div>
-          <span class="badge ${item.isCompleted ? 'badge-completed' : (isCurrent ? 'badge-masjid' : 'badge-neutral')}" style="font-size: 10px;">
-            ${item.isCompleted ? 'DONE' : (isCurrent ? 'ACTIVE' : `${item.duration}m`)}
-          </span>
+          <button class="btn ${item.isCompleted ? 'btn-success' : (isCurrent ? 'btn-primary' : 'btn-outline')} btn-sm routine-toggle-btn" 
+                  data-routine-id="${item.id}"
+                  style="min-height: 34px; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); white-space: nowrap;">
+            ${item.isCompleted ? 'DONE ✓' : (isCurrent ? 'MARK DONE' : 'COMPLETE')}
+          </button>
         </div>
       `;
     }).join('');
+
+    // Bind 1-tap quick complete action to both the button and row click
+    container.querySelectorAll('.routine-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const routineId = btn.getAttribute('data-routine-id');
+        this.toggleRoutineCompleted(routineId);
+      });
+    });
+
+    container.querySelectorAll('[data-action="toggle-routine"]').forEach(row => {
+      row.addEventListener('click', () => {
+        const routineId = row.getAttribute('data-routine-id');
+        this.toggleRoutineCompleted(routineId);
+      });
+    });
   }
 };
 
