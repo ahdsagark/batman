@@ -301,9 +301,11 @@ const StorageService = {
     
     // Check if an item with this ID or table/date key already exists in queue to deduplicate/coalesce
     const existingIndex = queue.findIndex(q => 
-      q.id === itemId || 
-      (q.table === table && q.id === itemId) ||
-      (q.table === table && q.data.date && data.date && q.data.date === data.date)
+      q && (
+        q.id === itemId || 
+        (q.table === table && q.id === itemId) ||
+        (q.table === table && q.data && q.data.date && data && data.date && q.data.date === data.date)
+      )
     );
     
     const queueItem = {

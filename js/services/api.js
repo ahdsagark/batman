@@ -12,7 +12,7 @@ const ApiService = {
    * @param {number} [timeoutMs=10000] 
    * @param {string} [apiToken='batman-secret-2026']
    */
-  async request(endpointUrl, action, payload = {}, timeoutMs = 10000, apiToken = 'batman-secret-2026') {
+  async request(endpointUrl, action, payload = {}, timeoutMs = 45000, apiToken = 'batman-secret-2026') {
     if (!endpointUrl || !endpointUrl.startsWith('http')) {
       throw new Error('Google Apps Script URL is not configured.');
     }
@@ -36,6 +36,7 @@ const ApiService = {
           payload,
           timestamp: DateUtils.getNowISO()
         }),
+        redirect: 'follow',
         signal: controller.signal
       });
 
@@ -54,7 +55,7 @@ const ApiService = {
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        throw new Error('Network request timed out');
+        throw new Error('Network request timed out. Please check your Google Apps Script Web App URL and connectivity.');
       }
       throw err;
     }
@@ -66,7 +67,7 @@ const ApiService = {
    * @param {string} [apiToken='batman-secret-2026']
    */
   async testConnection(endpointUrl, apiToken = 'batman-secret-2026') {
-    return this.request(endpointUrl, 'ping', { clientTime: DateUtils.getNowISO() }, 8000, apiToken);
+    return this.request(endpointUrl, 'ping', { clientTime: DateUtils.getNowISO() }, 20000, apiToken);
   },
 
   /**
@@ -76,7 +77,7 @@ const ApiService = {
    * @param {string} [apiToken='batman-secret-2026']
    */
   async syncBatch(endpointUrl, items, apiToken = 'batman-secret-2026') {
-    return this.request(endpointUrl, 'syncBatch', { items }, 12000, apiToken);
+    return this.request(endpointUrl, 'syncBatch', { items }, 45000, apiToken);
   }
 };
 

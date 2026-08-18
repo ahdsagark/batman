@@ -263,55 +263,65 @@ function syncDayLog(ss, dayData) {
   }
 }
 
+// In-memory sheet and row cache for high-performance batch processing
+var _sheetsCache = {};
+
+function getSheetContext(ss, sheetName) {
+  if (!_sheetsCache[sheetName]) {
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return null;
+    var data = sheet.getDataRange().getValues();
+    var idMap = {};
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] !== "" && data[i][0] !== null && data[i][0] !== undefined) {
+        idMap[data[i][0].toString()] = i + 1; // 1-based row index in sheet
+      }
+    }
+    _sheetsCache[sheetName] = {
+      sheet: sheet,
+      idMap: idMap,
+      lastRow: sheet.getLastRow()
+    };
+  }
+  return _sheetsCache[sheetName];
+}
+
 /**
- * Generic Idempotent Row Upsert based on Column 1 (ID) with Sanitization
+ * Generic Idempotent Row Upsert based on Column 1 (ID) with Sanitization & Caching
  */
 function upsertRowById(ss, sheetName, recordId, rowValues) {
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return;
+  var ctx = getSheetContext(ss, sheetName);
+  if (!ctx) return;
 
   var sanitizedValues = sanitizeRowValues(rowValues);
-  var data = sheet.getDataRange().getValues();
-  var targetRowIndex = -1;
+  var targetRowIndex = ctx.idMap[recordId.toString()];
 
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] && data[i][0].toString() === recordId.toString()) {
-      targetRowIndex = i + 1; // 1-based index
-      break;
-    }
-  }
-
-  if (targetRowIndex > 0) {
-    sheet.getRange(targetRowIndex, 1, 1, sanitizedValues.length).setValues([sanitizedValues]);
+  if (targetRowIndex) {
+    ctx.sheet.getRange(targetRowIndex, 1, 1, sanitizedValues.length).setValues([sanitizedValues]);
   } else {
-    sheet.appendRow(sanitizedValues);
+    ctx.sheet.appendRow(sanitizedValues);
+    ctx.lastRow++;
+    ctx.idMap[recordId.toString()] = ctx.lastRow;
   }
 }
 
 /**
- * Upsert key-value in Settings tab with Sanitization
+ * Upsert key-value in Settings tab with Sanitization & Caching
  */
 function upsertSetting(ss, key, value) {
-  var sheet = ss.getSheetByName("Settings");
-  if (!sheet) return;
-
-  var data = sheet.getDataRange().getValues();
-  var rowIndex = -1;
-
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] && data[i][0].toString() === key.toString()) {
-      rowIndex = i + 1;
-      break;
-    }
-  }
+  var ctx = getSheetContext(ss, "Settings");
+  if (!ctx) return;
 
   var now = new Date().toISOString();
   var sanitizedRow = sanitizeRowValues([key, value, now]);
+  var targetRowIndex = ctx.idMap[key.toString()];
 
-  if (rowIndex > 0) {
-    sheet.getRange(rowIndex, 1, 1, 3).setValues([sanitizedRow]);
+  if (targetRowIndex) {
+    ctx.sheet.getRange(targetRowIndex, 1, 1, 3).setValues([sanitizedRow]);
   } else {
-    sheet.appendRow(sanitizedRow);
+    ctx.sheet.appendRow(sanitizedRow);
+    ctx.lastRow++;
+    ctx.idMap[key.toString()] = ctx.lastRow;
   }
 }
 
