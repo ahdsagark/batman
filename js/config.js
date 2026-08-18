@@ -42,7 +42,7 @@ const CONFIG = {
 
   // Default Routine Schedule Blocks
   DEFAULT_ROUTINES: [
-    { id: 'routine-tahajjud', name: 'Tahajjud & Du’a', time: '04:00', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'relative-pre-fajr', isActive: true },
+    { id: 'routine-tahajjud', name: 'Tahajjud & Du’a', time: '04:30', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'relative-pre-fajr', isActive: true },
     { id: 'routine-fajr', name: 'Fajr Prayer (Masjid)', time: '05:00', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'prayer-fajr', isActive: true },
     { id: 'routine-quran-am', name: 'Qur’an Tafsir & Memorization', time: '05:30', duration: 45, days: [0,1,2,3,4,5,6], anchor: 'after-fajr', isActive: true },
     { id: 'routine-breakfast', name: 'Breakfast & High Protein Nutrition', time: '06:30', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'fixed', isActive: true },

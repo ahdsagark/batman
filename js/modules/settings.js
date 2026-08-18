@@ -469,7 +469,7 @@ const SettingsModule = {
             <option value="prayer-asr" ${routine.anchor === 'prayer-asr' ? 'selected' : ''}>Asr Prayer Time</option>
             <option value="prayer-maghrib" ${routine.anchor === 'prayer-maghrib' ? 'selected' : ''}>Maghrib Prayer Time</option>
             <option value="prayer-isha" ${routine.anchor === 'prayer-isha' ? 'selected' : ''}>Isha Prayer Time</option>
-            <option value="relative-pre-fajr" ${routine.anchor === 'relative-pre-fajr' ? 'selected' : ''}>Pre-Fajr (1 Hour Before Fajr / Tahajjud)</option>
+            <option value="relative-pre-fajr" ${routine.anchor === 'relative-pre-fajr' ? 'selected' : ''}>Pre-Fajr (30 Mins Before Fajr / Tahajjud)</option>
             <option value="after-fajr" ${routine.anchor === 'after-fajr' ? 'selected' : ''}>After Fajr (30 Mins After Fajr)</option>
             <option value="after-maghrib" ${routine.anchor === 'after-maghrib' ? 'selected' : ''}>After Maghrib (25 Mins After Maghrib)</option>
           </select>

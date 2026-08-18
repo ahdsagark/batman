@@ -158,7 +158,7 @@ const DashboardModule = {
       else if (r.anchor === 'prayer-isha') startTimeStr = prayerTimes.isha;
       else if (r.anchor === 'relative-pre-fajr') {
         const fajrMins = DateUtils.parseTimeToMinutes(prayerTimes.fajr);
-        startTimeStr = DateUtils.minutesToHHMM(fajrMins - 60);
+        startTimeStr = DateUtils.minutesToHHMM(fajrMins - 30);
       } else if (r.anchor === 'after-fajr') {
         const fajrMins = DateUtils.parseTimeToMinutes(prayerTimes.fajr);
         startTimeStr = DateUtils.minutesToHHMM(fajrMins + 30);
