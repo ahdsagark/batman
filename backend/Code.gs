@@ -348,20 +348,6 @@ function syncDayLog(ss, dayData) {
     ]);
   }
 
-  // 10. Quran Memorization Count
-  if (dayData.quranMemoCount !== undefined && dayData.quranMemoCount !== null) {
-    var memoId = "memo-" + dateStr;
-    upsertRowById(ss, "QuranMemorization", memoId, [
-      memoId,
-      "",
-      "",
-      "",
-      "",
-      dayData.quranMemoCount,
-      "LOGGED",
-      dateStr,
-      now
-    ]);
   }
 }
 
