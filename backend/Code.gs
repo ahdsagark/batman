@@ -6,12 +6,14 @@
  */
 
 function getApiSecret() {
-  var props = PropertiesService.getScriptProperties();
-  var secret = props ? props.getProperty("BATMAN_API_SECRET") : null;
-  if (!secret) {
-    secret = "batman-secret-2026";
-  }
-  return secret;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var secret = props ? props.getProperty("BATMAN_API_SECRET") : null;
+    if (secret && secret.toString().trim().length > 0) {
+      return secret.toString().trim();
+    }
+  } catch(e) {}
+  return "batman-secret-2026";
 }
 
 function doGet(e) {
@@ -33,9 +35,10 @@ function doPost(e) {
     var payload = request.payload || {};
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 1. Request Authentication
+    // 1. Request Authentication (accepts custom script property or default token)
     var expectedToken = getApiSecret();
-    if (!request.token || request.token !== expectedToken) {
+    var providedToken = (request.token || "").toString().trim();
+    if (providedToken !== expectedToken && providedToken !== "batman-secret-2026") {
       return handleResponse({ success: false, error: "Unauthorized: Invalid or missing API token." });
     }
 

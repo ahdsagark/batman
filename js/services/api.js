@@ -13,7 +13,8 @@ const ApiService = {
    * @param {string} [apiToken='batman-secret-2026']
    */
   async request(endpointUrl, action, payload = {}, timeoutMs = 45000, apiToken = 'batman-secret-2026') {
-    if (!endpointUrl || !endpointUrl.startsWith('http')) {
+    const cleanUrl = (endpointUrl || '').trim();
+    if (!cleanUrl || !cleanUrl.startsWith('http')) {
       throw new Error('Google Apps Script URL is not configured.');
     }
 
@@ -21,17 +22,18 @@ const ApiService = {
       throw new Error('Device is currently offline.');
     }
 
+    const cleanToken = (apiToken && typeof apiToken === 'string' && apiToken.trim()) ? apiToken.trim() : 'batman-secret-2026';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(endpointUrl, {
+      const response = await fetch(cleanUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
         body: JSON.stringify({
-          token: apiToken,
+          token: cleanToken,
           action,
           payload,
           timestamp: DateUtils.getNowISO()

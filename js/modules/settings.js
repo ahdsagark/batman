@@ -291,7 +291,7 @@ const SettingsModule = {
       prayerMethod: document.getElementById('setting-prayer-method').value,
       prayerAsrMethod: document.getElementById('setting-prayer-asr-method').value,
       gasWebAppUrl: document.getElementById('setting-gas-url').value.trim(),
-      gasApiToken: document.getElementById('setting-gas-token') ? document.getElementById('setting-gas-token').value.trim() : 'batman-secret-2026'
+      gasApiToken: (document.getElementById('setting-gas-token') && document.getElementById('setting-gas-token').value.trim()) ? document.getElementById('setting-gas-token').value.trim() : 'batman-secret-2026'
     };
     StorageService.saveSettings(updated);
     UI.showToast('Settings saved', 'success', 1500);
