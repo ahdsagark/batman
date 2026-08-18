@@ -424,6 +424,42 @@ function normalizeDateStr(val) {
 }
 
 /**
+ * Universal Time Normalizer: Converts Google Sheets native Time/Date object or ISO string to 'HH:MM'
+ */
+function normalizeTimeStr(val) {
+  if (!val) return "05:00";
+  if (val instanceof Date) {
+    var h = String(val.getHours());
+    if (h.length < 2) h = "0" + h;
+    var m = String(val.getMinutes());
+    if (m.length < 2) m = "0" + m;
+    return h + ":" + m;
+  }
+  var str = val.toString().trim();
+  if (str.indexOf('T') >= 0) {
+    var d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      var hh = String(d.getHours());
+      if (hh.length < 2) hh = "0" + hh;
+      var mm = String(d.getMinutes());
+      if (mm.length < 2) mm = "0" + mm;
+      return hh + ":" + mm;
+    }
+  }
+  var parts = str.split(':');
+  if (parts.length >= 2) {
+    var hourNum = parseInt(parts[0].replace(/[^0-9]/g, ''), 10) || 0;
+    var minNum = parseInt(parts[1].replace(/[^0-9]/g, ''), 10) || 0;
+    var hourStr = String(hourNum);
+    if (hourStr.length < 2) hourStr = "0" + hourStr;
+    var minStr = String(minNum);
+    if (minStr.length < 2) minStr = "0" + minStr;
+    return hourStr + ":" + minStr;
+  }
+  return str;
+}
+
+/**
  * Consolidated Database Export for multi-device synchronization & hydration
  */
 function handlePullAllData(ss) {
@@ -466,8 +502,8 @@ function handlePullAllData(ss) {
       data.routines.push({
         id: row[0],
         name: row[1] || "",
-        time: row[2] || "",
-        duration: row[3] || 30,
+        time: normalizeTimeStr(row[2]),
+        duration: parseInt(row[3], 10) || 30,
         days: daysArr,
         anchor: row[5] || "fixed",
         isActive: row[6] === "TRUE" || row[6] === true,

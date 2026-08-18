@@ -145,9 +145,9 @@ const DashboardModule = {
     const items = [];
 
     routines.forEach(r => {
-      if (r.active === false) return;
-      // Skip ADCD on weekends
-      if (r.days && r.days.length > 0 && !r.days.includes(dayOfWeek)) return;
+      if (r.isActive === false || r.active === false) return;
+      // Skip weekend routines if configured
+      if (r.days && Array.isArray(r.days) && r.days.length > 0 && !r.days.includes(dayOfWeek)) return;
       if (r.id === 'routine-adcd' && isWeekend) return;
 
       let startTimeStr = r.time;
@@ -156,25 +156,37 @@ const DashboardModule = {
       else if (r.anchor === 'prayer-asr') startTimeStr = prayerTimes.asr;
       else if (r.anchor === 'prayer-maghrib') startTimeStr = prayerTimes.maghrib;
       else if (r.anchor === 'prayer-isha') startTimeStr = prayerTimes.isha;
+      else if (r.anchor === 'relative-pre-fajr') {
+        const fajrMins = DateUtils.parseTimeToMinutes(prayerTimes.fajr);
+        startTimeStr = DateUtils.minutesToHHMM(fajrMins - 60);
+      } else if (r.anchor === 'after-fajr') {
+        const fajrMins = DateUtils.parseTimeToMinutes(prayerTimes.fajr);
+        startTimeStr = DateUtils.minutesToHHMM(fajrMins + 30);
+      } else if (r.anchor === 'after-maghrib') {
+        const maghribMins = DateUtils.parseTimeToMinutes(prayerTimes.maghrib);
+        startTimeStr = DateUtils.minutesToHHMM(maghribMins + 25);
+      }
 
-      const startMins = DateUtils.parseTimeToMinutes(startTimeStr);
-      const duration = r.duration || 30;
-      const endMins = startMins + duration;
+      let startMins = DateUtils.parseTimeToMinutes(startTimeStr);
+      if (isNaN(startMins) || startMins < 0) startMins = 0;
+      const duration = parseInt(r.duration, 10) || 30;
+      const endMins = (startMins + duration) % 1440;
 
       // Determine completion status
       let isCompleted = false;
-      const lowerName = r.name.toLowerCase();
+      const lowerName = (r.name || '').toLowerCase();
 
       if (lowerName.includes('fajr') && log.prayers && log.prayers.fajr && log.prayers.fajr.status === 'COMPLETED') isCompleted = true;
       else if (lowerName.includes('dhuhr') && log.prayers && log.prayers.dhuhr && log.prayers.dhuhr.status === 'COMPLETED') isCompleted = true;
       else if (lowerName.includes('asr') && log.prayers && log.prayers.asr && log.prayers.asr.status === 'COMPLETED') isCompleted = true;
       else if (lowerName.includes('maghrib') && log.prayers && log.prayers.maghrib && log.prayers.maghrib.status === 'COMPLETED') isCompleted = true;
       else if (lowerName.includes('isha') && log.prayers && log.prayers.isha && log.prayers.isha.status === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('qur') && lowerName.includes('morning') && (log.quranTafsirDone || (log.quranMemoCount || 0) > 0)) isCompleted = true;
-      else if (lowerName.includes('qur') && lowerName.includes('evening') && log.quranRecitationDone) isCompleted = true;
-      else if (lowerName.includes('adcd') && log.adcdAttended) isCompleted = true;
-      else if (lowerName.includes('cyber') && (log.cyberSeconds || 0) >= CONFIG.TARGETS.CYBER_DAILY_SECONDS) isCompleted = true;
-      else if (lowerName.includes('english') && (log.englishSeconds || 0) >= CONFIG.TARGETS.ENGLISH_DAILY_SECONDS) isCompleted = true;
+      else if (lowerName.includes('tahajjud') && log.tahajjud === 'COMPLETED') isCompleted = true;
+      else if (lowerName.includes('qur') && (lowerName.includes('morning') || lowerName.includes('tafsir')) && (log.quranTafsir === 'COMPLETED' || (log.quranMemoCount || 0) > 0)) isCompleted = true;
+      else if (lowerName.includes('qur') && (lowerName.includes('evening') || lowerName.includes('recitation')) && log.quranRecitation === 'COMPLETED') isCompleted = true;
+      else if (lowerName.includes('adcd') && log.adcdAttended === 'ATTENDED') isCompleted = true;
+      else if (lowerName.includes('cyber') && (log.cyberSeconds || 0) >= (CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400)) isCompleted = true;
+      else if (lowerName.includes('english') && (log.englishSeconds || 0) >= (CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600)) isCompleted = true;
       else if (lowerName.includes('gym') && log.gymAttended) isCompleted = true;
       else if (lowerName.includes('sleep') && log.sleepHours) isCompleted = true;
 
@@ -183,8 +195,8 @@ const DashboardModule = {
         startMins,
         endMins,
         duration,
-        startTimeStr,
-        endTimeStr: DateUtils.minutesToHHMM(endMins),
+        startTimeStr: DateUtils.minutesToHHMM(startMins),
+        endTimeStr: DateUtils.minutesToHHMM(startMins + duration),
         isCompleted
       });
     });

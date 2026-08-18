@@ -113,10 +113,28 @@ const StorageService = {
   // -------------------------------------------------------------
   // ROUTINES
   // -------------------------------------------------------------
+  // ROUTINES
+  // -------------------------------------------------------------
   getRoutines() {
     try {
       const data = localStorage.getItem(this.KEYS.ROUTINES);
-      return data ? JSON.parse(data) : CONFIG.DEFAULT_ROUTINES;
+      let list = data ? JSON.parse(data) : CONFIG.DEFAULT_ROUTINES;
+      if (!Array.isArray(list) || list.length === 0) {
+        list = CONFIG.DEFAULT_ROUTINES;
+      }
+      return list.map(r => {
+        const d = CONFIG.DEFAULT_ROUTINES.find(def => def.id === r.id);
+        const rawTime = r.time || (d ? d.time : '05:00');
+        const parsedMins = DateUtils.parseTimeToMinutes(rawTime);
+        const cleanTime = DateUtils.minutesToHHMM(parsedMins);
+        return {
+          ...r,
+          time: cleanTime,
+          duration: parseInt(r.duration, 10) || (d ? d.duration : 30),
+          anchor: r.anchor || (d ? d.anchor : 'fixed'),
+          isActive: r.isActive !== false && r.active !== false
+        };
+      });
     } catch (e) {
       return CONFIG.DEFAULT_ROUTINES;
     }

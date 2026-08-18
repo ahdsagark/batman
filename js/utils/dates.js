@@ -37,19 +37,19 @@ const DateUtils = {
   },
 
   /**
-   * Format 24-hour time "13:30" to 12-hour "1:30 PM"
-   * @param {string} time24 e.g. "13:30"
+   * Format 24-hour time "13:30" or Date object to 12-hour "1:30 PM"
+   * @param {string|Date} time24
    */
   format12Hour(time24) {
     if (!time24) return '--:--';
-    const [hStr, mStr] = time24.split(':');
-    let h = parseInt(hStr, 10);
-    const m = parseInt(mStr, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    h = h ? h : 12; // '0' becomes '12'
+    const totalMins = this.parseTimeToMinutes(time24);
+    const h24 = Math.floor(totalMins / 60) % 24;
+    const m = totalMins % 60;
+    const ampm = h24 >= 12 ? 'PM' : 'AM';
+    let h12 = h24 % 12;
+    if (h12 === 0) h12 = 12;
     const mPadded = String(m).padStart(2, '0');
-    return `${h}:${mPadded} ${ampm}`;
+    return `${h12}:${mPadded} ${ampm}`;
   },
 
   /**
@@ -107,12 +107,53 @@ const DateUtils = {
   },
 
   /**
-   * Parse minutes from time string "HH:MM" (from midnight)
+   * Robustly parse minutes from time string (e.g. "13:30", "1:30 PM", ISO Date string, or Date instance)
+   * @param {string|Date|number} timeInput
    */
-  parseTimeToMinutes(timeStr) {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(':').map(Number);
-    return (h || 0) * 60 + (m || 0);
+  parseTimeToMinutes(timeInput) {
+    if (!timeInput) return 0;
+    if (typeof timeInput === 'number') {
+      return isNaN(timeInput) ? 0 : Math.max(0, Math.floor(timeInput)) % 1440;
+    }
+
+    if (timeInput instanceof Date) {
+      return timeInput.getHours() * 60 + timeInput.getMinutes();
+    }
+
+    const str = String(timeInput).trim();
+    if (!str) return 0;
+
+    // Handle ISO string or full date string e.g. "1899-12-30T21:30:00.000Z"
+    const isoMatch = str.match(/T(\d{2}):(\d{2})/);
+    if (isoMatch) {
+      const h = parseInt(isoMatch[1], 10);
+      const m = parseInt(isoMatch[2], 10);
+      return (h % 24) * 60 + (m % 60);
+    }
+
+    if (str.includes('T')) {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        return d.getHours() * 60 + d.getMinutes();
+      }
+    }
+
+    const isPM = /pm/i.test(str);
+    const isAM = /am/i.test(str);
+    const clean = str.replace(/[^0-9:]/g, '');
+    const parts = clean.split(':');
+
+    if (parts.length >= 2) {
+      let h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+
+      if (isPM && h < 12) h += 12;
+      if (isAM && h === 12) h = 0;
+
+      return (Math.max(0, h) % 24) * 60 + (Math.max(0, m) % 60);
+    }
+
+    return 0;
   },
 
   /**
