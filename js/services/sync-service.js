@@ -272,10 +272,18 @@ const SyncService = {
       const result = await ApiService.pullAllData(gasUrl, apiToken);
 
       if (result && result.success && result.data) {
+        console.log('[Sync] Pulled from Google Sheets:', result.data);
+        const dayCount = Object.keys(result.data.dayLogs || {}).length;
         const hydrated = StorageService.hydrateFromCloud(result.data);
         if (hydrated) {
           this.refreshAllModules();
-          if (showToasts) UI.showToast('Refreshed data from Google Sheets ✓', 'success', 3000);
+          if (showToasts) {
+            if (dayCount > 0) {
+              UI.showToast(`Loaded ${dayCount} day(s) from Google Sheets ✓`, 'success', 3500);
+            } else {
+              UI.showToast('Connected to Google Sheets, but no logged days found yet. Please tap "Push Sync" on your mobile phone.', 'info', 4500);
+            }
+          }
         }
       } else {
         throw new Error(result.error || 'Failed to pull cloud data');

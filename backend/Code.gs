@@ -17,6 +17,18 @@ function getApiSecret() {
 }
 
 function doGet(e) {
+  var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "ping";
+  var token = (e && e.parameter && e.parameter.token) ? e.parameter.token : "";
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  var expectedToken = getApiSecret();
+  if (action === "pullAllData") {
+    if (token !== expectedToken && token !== "batman-secret-2026") {
+      return handleResponse({ success: false, error: "Unauthorized: Invalid or missing API token in GET request." });
+    }
+    return handlePullAllData(ss);
+  }
+
   return handleResponse({
     success: true,
     message: "BATMAN Google Apps Script API is online.",
@@ -383,6 +395,35 @@ function handleResponse(obj) {
 }
 
 /**
+ * Universal Date Normalizer: Converts Google Sheets native Date object or ISO string to 'YYYY-MM-DD'
+ */
+function normalizeDateStr(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    var year = val.getFullYear();
+    var month = String(val.getMonth() + 1);
+    if (month.length < 2) month = "0" + month;
+    var day = String(val.getDate());
+    if (day.length < 2) day = "0" + day;
+    return year + "-" + month + "-" + day;
+  }
+  var str = val.toString().trim();
+  if (str.length >= 10 && str.charAt(4) === '-' && str.charAt(7) === '-') {
+    return str.substring(0, 10);
+  }
+  var parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    var y = parsed.getFullYear();
+    var m = String(parsed.getMonth() + 1);
+    if (m.length < 2) m = "0" + m;
+    var d = String(parsed.getDate());
+    if (d.length < 2) d = "0" + d;
+    return y + "-" + m + "-" + d;
+  }
+  return str;
+}
+
+/**
  * Consolidated Database Export for multi-device synchronization & hydration
  */
 function handlePullAllData(ss) {
@@ -435,8 +476,10 @@ function handlePullAllData(ss) {
     }
   }
 
-  // Helper to ensure dayLogs entry exists
-  function getDayLog(dateStr) {
+  // Helper to ensure dayLogs entry exists with YYYY-MM-DD format
+  function getDayLog(dateInput) {
+    var dateStr = normalizeDateStr(dateInput);
+    if (!dateStr) return null;
     if (!data.dayLogs[dateStr]) {
       data.dayLogs[dateStr] = {
         date: dateStr,
@@ -475,12 +518,14 @@ function handlePullAllData(ss) {
       var d = row[1];
       var pName = row[2];
       if (d && pName) {
-        var day = getDayLog(d.toString());
-        day.prayers[pName] = {
-          status: row[3] || 'NOT_COMPLETED',
-          location: row[4] || '',
-          timestamp: row[5] || null
-        };
+        var day = getDayLog(d);
+        if (day) {
+          day.prayers[pName] = {
+            status: row[3] || 'NOT_COMPLETED',
+            location: row[4] || '',
+            timestamp: row[5] || null
+          };
+        }
       }
     }
   }
@@ -493,8 +538,8 @@ function handlePullAllData(ss) {
       var row = tahajjudData[i];
       var d = row[1];
       if (d) {
-        var day = getDayLog(d.toString());
-        day.tahajjud = row[2] || 'MISSED';
+        var day = getDayLog(d);
+        if (day) day.tahajjud = row[2] || 'MISSED';
       }
     }
   }
@@ -508,9 +553,11 @@ function handlePullAllData(ss) {
       var d = row[1];
       var sessType = row[2];
       if (d && sessType) {
-        var day = getDayLog(d.toString());
-        if (sessType === "AM_TAFSIR") day.quranTafsir = row[3] || 'NOT_COMPLETED';
-        if (sessType === "PM_RECITATION") day.quranRecitation = row[3] || 'NOT_COMPLETED';
+        var day = getDayLog(d);
+        if (day) {
+          if (sessType === "AM_TAFSIR") day.quranTafsir = row[3] || 'NOT_COMPLETED';
+          if (sessType === "PM_RECITATION") day.quranRecitation = row[3] || 'NOT_COMPLETED';
+        }
       }
     }
   }
@@ -523,8 +570,8 @@ function handlePullAllData(ss) {
       var row = adcdData[i];
       var d = row[1];
       if (d) {
-        var day = getDayLog(d.toString());
-        day.adcdAttended = row[2] || 'NOT_ATTENDED';
+        var day = getDayLog(d);
+        if (day) day.adcdAttended = row[2] || 'NOT_ATTENDED';
       }
     }
   }
@@ -537,10 +584,12 @@ function handlePullAllData(ss) {
       var row = fitData[i];
       var d = row[1];
       if (d) {
-        var day = getDayLog(d.toString());
-        day.gymAttended = (row[2] === true || row[2] === "TRUE");
-        day.weightKg = row[3] ? parseFloat(row[3]) : null;
-        day.bmi = row[4] ? parseFloat(row[4]) : null;
+        var day = getDayLog(d);
+        if (day) {
+          day.gymAttended = (row[2] === true || row[2] === "TRUE");
+          day.weightKg = row[3] ? parseFloat(row[3]) : null;
+          day.bmi = row[4] ? parseFloat(row[4]) : null;
+        }
       }
     }
   }
@@ -553,10 +602,12 @@ function handlePullAllData(ss) {
       var row = sleepData[i];
       var d = row[1];
       if (d) {
-        var day = getDayLog(d.toString());
-        day.sleepHours = row[2] ? parseFloat(row[2]) : null;
-        day.bedtime = row[3] || "";
-        day.waketime = row[4] || "";
+        var day = getDayLog(d);
+        if (day) {
+          day.sleepHours = row[2] ? parseFloat(row[2]) : null;
+          day.bedtime = row[3] || "";
+          day.waketime = row[4] || "";
+        }
       }
     }
   }
@@ -570,8 +621,8 @@ function handlePullAllData(ss) {
       var d = row[1];
       var secs = parseFloat(row[4]) || 0;
       if (d) {
-        var day = getDayLog(d.toString());
-        day.cyberSeconds = (day.cyberSeconds || 0) + secs;
+        var day = getDayLog(d);
+        if (day) day.cyberSeconds = (day.cyberSeconds || 0) + secs;
       }
     }
   }
@@ -585,8 +636,8 @@ function handlePullAllData(ss) {
       var d = row[1];
       var secs = parseFloat(row[4]) || 0;
       if (d) {
-        var day = getDayLog(d.toString());
-        day.englishSeconds = (day.englishSeconds || 0) + secs;
+        var day = getDayLog(d);
+        if (day) day.englishSeconds = (day.englishSeconds || 0) + secs;
       }
     }
   }
@@ -600,8 +651,8 @@ function handlePullAllData(ss) {
       var d = row[7] || row[1];
       var count = parseInt(row[5], 10) || 0;
       if (d) {
-        var day = getDayLog(d.toString());
-        day.quranMemoCount = Math.max(day.quranMemoCount || 0, count);
+        var day = getDayLog(d);
+        if (day) day.quranMemoCount = Math.max(day.quranMemoCount || 0, count);
       }
     }
   }
@@ -614,18 +665,20 @@ function handlePullAllData(ss) {
       var row = revData[i];
       var d = row[1];
       if (d) {
-        var day = getDayLog(d.toString());
-        day.review = {
-          deenRating: parseInt(row[2], 10) || 3,
-          cyberRating: parseInt(row[3], 10) || 3,
-          englishRating: parseInt(row[4], 10) || 3,
-          fitnessRating: parseInt(row[5], 10) || 3,
-          energyRating: parseInt(row[6], 10) || 3,
-          whatWentWell: row[7] || "",
-          whatWentWrong: row[8] || "",
-          whatToImprove: row[9] || "",
-          completedAt: row[10] || ""
-        };
+        var day = getDayLog(d);
+        if (day) {
+          day.review = {
+            deenRating: parseInt(row[2], 10) || 3,
+            cyberRating: parseInt(row[3], 10) || 3,
+            englishRating: parseInt(row[4], 10) || 3,
+            fitnessRating: parseInt(row[5], 10) || 3,
+            energyRating: parseInt(row[6], 10) || 3,
+            whatWentWell: row[7] || "",
+            whatWentWrong: row[8] || "",
+            whatToImprove: row[9] || "",
+            completedAt: row[10] || ""
+          };
+        }
       }
     }
   }
@@ -639,7 +692,7 @@ function handlePullAllData(ss) {
       if (!row[0]) continue;
       data.ielts.push({
         id: row[0],
-        date: row[1] || "",
+        date: normalizeDateStr(row[1]),
         listening: parseFloat(row[2]) || 0,
         reading: parseFloat(row[3]) || 0,
         writing: parseFloat(row[4]) || 0,
@@ -663,7 +716,7 @@ function handlePullAllData(ss) {
         id: row[0],
         title: row[1] || "",
         pillar: row[2] || "",
-        targetDate: row[3] || "",
+        targetDate: normalizeDateStr(row[3]),
         status: row[4] || "IN_PROGRESS",
         milestones: milestonesArr,
         updatedAt: row[6] || ""
@@ -678,10 +731,10 @@ function handlePullAllData(ss) {
     for (var i = 1; i < weeklyData.length; i++) {
       var row = weeklyData[i];
       if (!row[0]) continue;
-      var weekStart = row[1] || row[0];
+      var weekStart = normalizeDateStr(row[1] || row[0]);
       data.weeklyReviews[weekStart] = {
         id: row[0],
-        weekStartDate: row[1] || "",
+        weekStartDate: weekStart,
         deenScore: row[2] || 0,
         cyberHours: row[3] || 0,
         englishHours: row[4] || 0,
