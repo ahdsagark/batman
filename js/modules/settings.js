@@ -304,84 +304,95 @@ const SettingsModule = {
 
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const formatDays = (days) => {
-      if (!Array.isArray(days) || days.length === 7 || days.length === 0) return 'Daily (Mon–Sun)';
-      if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Mon–Fri (Weekdays)';
-      if (days.length === 2 && days.includes(0) && days.includes(6)) return 'Sat–Sun (Weekends)';
+      if (!Array.isArray(days) || days.length === 7 || days.length === 0) return 'Daily';
+      if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Mon–Fri';
+      if (days.length === 2 && days.includes(0) && days.includes(6)) return 'Sat–Sun';
       return days.map(d => dayLabels[d] || d).join(', ');
     };
 
     const formatAnchor = (anchor) => {
       const map = {
         'fixed': 'Fixed Clock',
-        'prayer-fajr': 'Fajr Anchor',
-        'prayer-dhuhr': 'Dhuhr Anchor',
-        'prayer-asr': 'Asr Anchor',
-        'prayer-maghrib': 'Maghrib Anchor',
-        'prayer-isha': 'Isha Anchor',
-        'relative-pre-fajr': 'Pre-Fajr',
-        'after-fajr': 'After Fajr',
-        'after-maghrib': 'After Maghrib'
+        'prayer-fajr': '⚡ Fajr Anchor',
+        'prayer-dhuhr': '⚡ Dhuhr Anchor',
+        'prayer-asr': '⚡ Asr Anchor',
+        'prayer-maghrib': '⚡ Maghrib Anchor',
+        'prayer-isha': '⚡ Isha Anchor',
+        'relative-pre-fajr': '⚡ Pre-Fajr',
+        'after-fajr': '⚡ After Fajr',
+        'after-maghrib': '⚡ After Maghrib'
       };
       return map[anchor] || anchor || 'Fixed';
     };
 
     container.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-color);">
-        <span style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">
-          ${routines.length} Scheduled Block${routines.length === 1 ? '' : 's'}
-        </span>
-        <button id="modal-top-add-routine-btn" class="btn btn-primary btn-sm" style="font-weight: 700; padding: 4px 12px; font-size: 11px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-subtle);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: var(--text-xs); font-weight: 800; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.08em;">
+            ${routines.length} SCHEDULED BLOCKS
+          </span>
+        </div>
+        <button id="modal-top-add-routine-btn" class="btn btn-primary btn-sm" style="font-weight: 700; padding: 4px 14px; font-size: 11px; height: 32px; border-radius: var(--radius-sm);">
           + Add Routine
         </button>
       </div>
 
-      <div style="max-height: 55vh; overflow-y: auto; margin-bottom: var(--space-3); padding-right: 2px;">
+      <div style="max-height: 60vh; overflow-y: auto; margin-bottom: var(--space-3); padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
         ${routines.length === 0 ? `
           <div style="padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: var(--text-sm);">
             No routines configured. Click "Reset Defaults" below.
           </div>
-        ` : routines.map((r, idx) => `
-          <div class="card" style="margin-bottom: var(--space-2); padding: 12px; border-left: 3px solid ${r.isActive ? 'var(--accent-primary)' : 'var(--border-color)'};">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-              <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
-                  <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); font-family: var(--font-mono);">#${idx + 1}</span>
-                  <span style="font-weight: 700; color: var(--text-primary); font-size: var(--text-sm);">${r.name}</span>
+        ` : routines.map((r, idx) => {
+          const isPaused = r.isActive === false;
+          return `
+            <div class="card" style="margin-bottom: 0; padding: 12px 14px; background-color: var(--bg-surface-elevated); border: 1px solid ${isPaused ? 'var(--border-subtle)' : 'var(--border-medium)'}; opacity: ${isPaused ? '0.6' : '1'}; transition: all 0.2s ease;">
+              <!-- Header Row: Index + Title on Left, Single Unified Action Row on Right -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                  <span style="font-size: 10.5px; font-weight: 800; color: var(--accent-primary); font-family: var(--font-mono); background: rgba(0, 229, 255, 0.1); padding: 2px 6px; border-radius: var(--radius-xs); flex-shrink: 0;">#${idx + 1}</span>
+                  <span style="font-weight: 700; color: var(--text-primary); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.name}</span>
                 </div>
-                <div style="font-size: var(--text-xs); color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                  <span style="color: var(--accent-primary); font-weight: 600; font-family: var(--font-mono);">${DateUtils.format12Hour(r.time)}</span>
-                  <span>•</span>
-                  <span>${r.duration || 30} mins</span>
-                  <span>•</span>
-                  <span class="badge badge-neutral" style="font-size: 10px; padding: 1px 6px;">${formatAnchor(r.anchor)}</span>
-                </div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                  ${formatDays(r.days)}
+
+                <!-- Unified Horizontal Action Row -->
+                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <button class="routine-toggle-active-btn" data-id="${r.id}" title="Toggle Active / Paused" style="background: ${r.isActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)'}; color: ${r.isActive ? '#10b981' : '#94a3b8'}; border: 1px solid ${r.isActive ? 'rgba(16, 185, 129, 0.35)' : 'rgba(100, 116, 139, 0.25)'}; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; height: 26px;">
+                    <span style="font-size: 8px;">${r.isActive ? '●' : '○'}</span> ${r.isActive ? 'ACTIVE' : 'PAUSED'}
+                  </button>
+
+                  <button class="btn btn-secondary btn-sm routine-edit-btn" data-id="${r.id}" title="Edit Routine" style="min-height: 26px; height: 26px; width: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-xs);">
+                    <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                  </button>
+
+                  <button class="btn btn-outline btn-sm routine-delete-btn" data-id="${r.id}" title="Delete Routine" style="min-height: 26px; height: 26px; width: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-xs); color: var(--status-danger); border-color: rgba(239, 68, 68, 0.3);">
+                    <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
                 </div>
               </div>
 
-              <!-- Action Buttons -->
-              <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn btn-secondary btn-sm routine-edit-btn" data-id="${r.id}" title="Edit Routine" style="min-height: 30px; padding: 3px 8px; font-size: 11px; font-weight: 700;">
-                    ✏️ Edit
-                  </button>
-                  <button class="btn btn-outline btn-sm routine-delete-btn" data-id="${r.id}" title="Delete Routine" style="min-height: 30px; padding: 3px 8px; font-size: 11px; color: var(--status-error); border-color: rgba(239, 68, 68, 0.4);">
-                    🗑️
-                  </button>
-                </div>
-                <button class="btn ${r.isActive ? 'btn-success' : 'btn-secondary'} btn-sm routine-toggle-active-btn" data-id="${r.id}" style="min-height: 26px; padding: 2px 8px; font-size: 10px; font-weight: 700;">
-                  ${r.isActive ? 'ACTIVE' : 'PAUSED'}
-                </button>
+              <!-- Metadata Line: Time, Duration, Anchor & Days -->
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 11px;">
+                <span style="background: rgba(255, 255, 255, 0.06); color: #ffffff; font-family: var(--font-mono); font-weight: 700; padding: 2px 7px; border-radius: var(--radius-xs); border: 1px solid rgba(255, 255, 255, 0.08);">
+                  ${DateUtils.format12Hour(r.time)}
+                </span>
+                <span style="color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 2px 7px; border-radius: var(--radius-xs); font-weight: 600;">
+                  ${r.duration || 30}m
+                </span>
+                <span class="badge ${r.anchor && r.anchor !== 'fixed' ? 'badge-masjid' : 'badge-neutral'}" style="font-size: 10px; padding: 2px 6px;">
+                  ${formatAnchor(r.anchor)}
+                </span>
+                <span style="color: var(--text-muted); font-size: 10.5px; margin-left: auto; font-weight: 500;">
+                  ${formatDays(r.days)}
+                </span>
               </div>
             </div>
-          </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
 
-      <div style="display: flex; gap: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-3);">
-        <button id="modal-bottom-add-routine-btn" class="btn btn-primary" style="flex: 1; font-weight: 700;">+ Add Routine</button>
-        <button id="modal-reset-routines-btn" class="btn btn-outline" style="font-size: var(--text-xs);">↺ Reset Defaults</button>
+      <!-- Clean Sticky Bottom Actions -->
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: var(--space-2); border-top: 1px solid var(--border-subtle); padding-top: var(--space-3);">
+        <button id="modal-bottom-add-routine-btn" class="btn btn-primary" style="font-weight: 700; font-size: var(--text-sm);">+ Add Routine</button>
+        <button id="modal-reset-routines-btn" class="btn btn-outline" style="font-size: 11.5px; color: var(--text-secondary);">↺ Reset Defaults</button>
       </div>
     `;
 
