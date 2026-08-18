@@ -159,6 +159,15 @@ const QuranModule = {
       todayCountEl.textContent = completedVerses;
     }
 
+    // Disable minus button when current surah is already at 0 verses
+    const minusBtn = document.getElementById('quran-memo-minus');
+    if (minusBtn) {
+      const isZero = completedVerses <= 0;
+      minusBtn.disabled = isZero;
+      minusBtn.style.opacity = isZero ? '0.4' : '1';
+      minusBtn.style.cursor = isZero ? 'not-allowed' : 'pointer';
+    }
+
     // Determine correct button text
     if (selectBtn) {
       if (isSurahCompleted) {
@@ -216,11 +225,20 @@ const QuranModule = {
         }, 350);
       }
     } else if (delta < 0) {
-      if (currentCompleted <= 0 && currentToday <= 0) return;
+      if (currentCompleted <= 0) {
+        UI.vibrate(10);
+        UI.showToast(`Surah ${activeSurah.name} is already at 0 verses`, 'info', 1500);
+        return;
+      }
 
       const nextCompleted = Math.max(0, currentCompleted - 1);
       const nextToday = Math.max(0, currentToday - 1);
-      surahProgress[activeNumber] = nextCompleted;
+
+      if (nextCompleted > 0) {
+        surahProgress[activeNumber] = nextCompleted;
+      } else {
+        delete surahProgress[activeNumber];
+      }
 
       StorageService.saveSettings({
         activeSurahCompletedVerses: nextCompleted,
