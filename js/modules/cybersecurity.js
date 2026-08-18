@@ -73,8 +73,17 @@ const CyberModule = {
     const todayISO = DateUtils.getTodayISO();
     const log = StorageService.getDayLog(todayISO);
     const allLogs = StorageService.getDayLogs();
+    const totalSecsToday = log.cyberSeconds || 0;
 
-    // 1. Date-Aware ADCD Display
+    // 1. Header Badge
+    const headerBadge = document.getElementById('cyber-header-badge');
+    if (headerBadge) {
+      const isMet = totalSecsToday >= 14400;
+      headerBadge.textContent = `${DateUtils.formatDurationHoursMins(totalSecsToday)} / 4h${isMet ? ' ✓' : ''}`;
+      headerBadge.className = isMet ? 'badge badge-masjid' : (totalSecsToday > 0 ? 'badge badge-home' : 'badge badge-neutral');
+    }
+
+    // 2. Date-Aware ADCD Display
     const dayOfWeek = new Date().getDay(); // 0 = Sunday, 6 = Saturday
     const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
     const adcdContainer = document.getElementById('adcd-container');
@@ -82,23 +91,27 @@ const CyberModule = {
     if (adcdContainer) {
       if (isWeekend) {
         adcdContainer.innerHTML = `
-          <div class="prayer-info">
-            <span class="prayer-name" style="font-weight: 700; font-size: var(--text-base);">ADCD</span>
-            <span class="prayer-time">No class today (Weekend)</span>
-          </div>
-          <div class="prayer-actions">
-            <span class="badge badge-neutral">OFF</span>
+          <div style="background-color: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="prayer-info">
+              <div style="font-weight: 700; font-size: var(--text-sm); color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                <span>🎓 ADCD Offensive Security Class</span>
+              </div>
+              <span class="prayer-time" style="margin-top: 2px;">No live class scheduled today (Weekend)</span>
+            </div>
+            <span class="badge badge-neutral" style="font-weight: 700; font-size: 11px;">WEEKEND OFF</span>
           </div>
         `;
       } else {
         const isAttended = log.adcdAttended === 'ATTENDED';
         adcdContainer.innerHTML = `
-          <div class="prayer-info">
-            <span class="prayer-name" style="font-weight: 700; font-size: var(--text-base);">ADCD Class (09:30 – 11:30 AM)</span>
-            <span id="adcd-status-desc" class="prayer-time">Mon – Fri Attendance</span>
-          </div>
-          <div class="prayer-actions">
-            <button id="adcd-toggle-btn" class="btn ${isAttended ? 'btn-success' : 'btn-secondary'} btn-sm" style="min-height: 44px; min-width: 125px; font-weight: 700;">
+          <div style="background-color: var(--bg-surface-elevated); border: 1px solid var(--border-medium); border-left: 3px solid ${isAttended ? 'var(--status-success)' : 'var(--accent-primary)'}; border-radius: 0 var(--radius-md) var(--radius-md) 0; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="prayer-info">
+              <div style="font-weight: 700; font-size: var(--text-sm); color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                <span>🎓 ADCD Offensive Security Class</span>
+              </div>
+              <span class="prayer-time" style="margin-top: 2px; color: var(--text-secondary);">Mon – Fri • 09:30 AM – 11:30 AM (2.0h Live)</span>
+            </div>
+            <button id="adcd-toggle-btn" class="btn ${isAttended ? 'btn-success' : 'btn-secondary'} btn-sm" style="min-height: 42px; min-width: 125px; font-weight: 800; font-size: 11px;">
               ${isAttended ? 'ATTENDED ✓' : 'NOT ATTENDED'}
             </button>
           </div>
@@ -116,11 +129,36 @@ const CyberModule = {
       }
     }
 
-    // 2. Cyber Logged Time Display & Aggregations
-    const loggedEl = document.getElementById('cyber-today-logged');
-    const totalSecsToday = log.cyberSeconds || 0;
+    // 3. Deep Work Progress Bar & Percent
+    const pct = Math.min(100, Math.round((totalSecsToday / 14400) * 100));
+    const progTextEl = document.getElementById('cyber-progress-percentage');
+    const progBarEl = document.getElementById('cyber-progress-bar');
+    if (progTextEl) {
+      progTextEl.textContent = `${pct}%${totalSecsToday >= 14400 ? ' (Target Achieved ✓)' : ''}`;
+      progTextEl.style.color = totalSecsToday >= 14400 ? 'var(--status-success)' : 'var(--accent-primary)';
+    }
+    if (progBarEl) {
+      progBarEl.style.width = `${pct}%`;
+      if (totalSecsToday >= 14400) progBarEl.classList.add('success');
+      else progBarEl.classList.remove('success');
+    }
 
-    // Calculate Weekly, Monthly, and 9-Month Aggregations
+    // 4. Timer Status Badge
+    const timerBadge = document.getElementById('cyber-timer-status-badge');
+    if (timerBadge) {
+      if (this.timerState === 'RUNNING') {
+        timerBadge.textContent = '● FOCUSING';
+        timerBadge.className = 'badge badge-masjid';
+      } else if (this.timerState === 'PAUSED') {
+        timerBadge.textContent = '● PAUSED';
+        timerBadge.className = 'badge badge-home';
+      } else {
+        timerBadge.textContent = 'READY';
+        timerBadge.className = 'badge badge-neutral';
+      }
+    }
+
+    // 5. Calculate Weekly, Monthly, and 9-Month Aggregations
     let weeklySecs = 0;
     let monthlySecs = 0;
     let total9MSecs = 0;
@@ -135,18 +173,19 @@ const CyberModule = {
       if (past30.includes(dateStr)) monthlySecs += daySecs;
     });
 
-    if (loggedEl) {
-      loggedEl.innerHTML = `
-        <div style="font-size: var(--text-xs); color: var(--text-primary); font-weight: 600; margin-bottom: 2px;">
-          Today: ${DateUtils.formatDurationHoursMins(totalSecsToday)} / 4h Target
-        </div>
-        <div style="font-size: 11px; color: var(--text-muted);">
-          Week: ${(weeklySecs / 3600).toFixed(1)}h • Month: ${(monthlySecs / 3600).toFixed(1)}h • 9M Total: ${(total9MSecs / 3600).toFixed(1)}h
-        </div>
-      `;
-    }
+    const statToday = document.getElementById('cyber-stat-today');
+    const statTodaySub = document.getElementById('cyber-stat-today-sub');
+    const statWeek = document.getElementById('cyber-stat-week');
+    const statMonth = document.getElementById('cyber-stat-month');
+    const stat9m = document.getElementById('cyber-stat-9m');
 
-    // 3. Update Timer Display & Controls UI
+    if (statToday) statToday.textContent = DateUtils.formatDurationHoursMins(totalSecsToday);
+    if (statTodaySub) statTodaySub.textContent = `Target: 4.0h ${totalSecsToday >= 14400 ? '✓' : ''}`;
+    if (statWeek) statWeek.textContent = `${(weeklySecs / 3600).toFixed(1)}h`;
+    if (statMonth) statMonth.textContent = `${(monthlySecs / 3600).toFixed(1)}h`;
+    if (stat9m) stat9m.textContent = `${(total9MSecs / 3600).toFixed(1)}h`;
+
+    // 6. Update Timer Display & Controls UI
     const displayEl = document.getElementById('cyber-timer-display');
     if (displayEl) {
       displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
