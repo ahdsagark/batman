@@ -1,0 +1,198 @@
+/**
+ * BATMAN — Global Configuration & Static Metadata
+ */
+
+const CONFIG = {
+  APP_NAME: 'BATMAN',
+  VERSION: '1.0.0',
+  PERIOD_MONTHS: 9,
+
+  // Default Targets
+  TARGETS: {
+    CYBER_DAILY_SECONDS: 4 * 3600, // 4 hours
+    ENGLISH_DAILY_SECONDS: 30 * 60, // 30 mins
+    GYM_WEEKLY_SESSIONS: 4,
+    SLEEP_DAILY_HOURS: 7.5,
+    QURAN_DAILY_VERSES: 3,
+    DEFAULT_WEIGHT_TARGET: 70.0,
+    DEFAULT_HEIGHT_CM: 178
+  },
+
+  // City Coordinates Pre-sets (India & Regional)
+  CITIES: {
+    'Calicut,India': { name: 'Calicut (Kozhikode)', lat: 11.2588, lng: 75.7804, tz: 5.5 },
+    'Kochi,India': { name: 'Kochi', lat: 9.9312, lng: 76.2673, tz: 5.5 },
+    'Trivandrum,India': { name: 'Trivandrum', lat: 8.5241, lng: 76.9366, tz: 5.5 },
+    'Bangalore,India': { name: 'Bangalore', lat: 12.9716, lng: 77.5946, tz: 5.5 },
+    'Chennai,India': { name: 'Chennai', lat: 13.0827, lng: 80.2707, tz: 5.5 },
+    'Mumbai,India': { name: 'Mumbai', lat: 19.0760, lng: 72.8777, tz: 5.5 },
+    'Delhi,India': { name: 'Delhi', lat: 28.6139, lng: 77.2090, tz: 5.5 },
+    'Hyderabad,India': { name: 'Hyderabad', lat: 17.3850, lng: 78.4867, tz: 5.5 }
+  },
+
+  // Default Calculation Methods
+  // Karachi is the standard accepted method for India / Pakistan / South Asia (Fajr 18°, Isha 18°)
+  CALC_METHODS: {
+    Karachi: { name: 'University of Islamic Sciences, Karachi', fajrAngle: 18.0, ishaAngle: 18.0 },
+    MWL: { name: 'Muslim World League (MWL)', fajrAngle: 18.0, ishaAngle: 17.0 },
+    ISNA: { name: 'Islamic Society of North America (ISNA)', fajrAngle: 15.0, ishaAngle: 15.0 },
+    Egypt: { name: 'Egyptian General Authority of Survey', fajrAngle: 19.5, ishaAngle: 17.5 },
+    Makkah: { name: 'Umm al-Qura University, Makkah', fajrAngle: 18.5, ishaInterval: 90 } // 90 min after Maghrib
+  },
+
+  // Default Routine Schedule Blocks
+  DEFAULT_ROUTINES: [
+    { id: 'routine-tahajjud', name: 'Tahajjud & Du’a', time: '04:00', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'relative-pre-fajr', isActive: true },
+    { id: 'routine-fajr', name: 'Fajr Prayer (Masjid)', time: '05:00', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'prayer-fajr', isActive: true },
+    { id: 'routine-quran-am', name: 'Qur’an Tafsir & Memorization', time: '05:30', duration: 45, days: [0,1,2,3,4,5,6], anchor: 'after-fajr', isActive: true },
+    { id: 'routine-breakfast', name: 'Breakfast & High Protein Nutrition', time: '06:30', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'fixed', isActive: true },
+    { id: 'routine-cyber-rev', name: 'Cybersecurity Concepts Review', time: '07:30', duration: 45, days: [1,2,3,4,5], anchor: 'fixed', isActive: true },
+    { id: 'routine-commute-in', name: 'Commute to ADCD (Listen Islamic Lesson)', time: '08:30', duration: 60, days: [1,2,3,4,5], anchor: 'fixed', isActive: true },
+    { id: 'routine-adcd', name: 'ADCD Offensive Security Class', time: '09:30', duration: 120, days: [1,2,3,4,5], anchor: 'fixed', isActive: true },
+    { id: 'routine-commute-out', name: 'Commute Back (Listen Islamic Lesson)', time: '11:30', duration: 60, days: [1,2,3,4,5], anchor: 'fixed', isActive: true },
+    { id: 'routine-dhuhr', name: 'Dhuhr Prayer', time: '12:30', duration: 25, days: [0,1,2,3,4,5,6], anchor: 'prayer-dhuhr', isActive: true },
+    { id: 'routine-cyber-work', name: 'Cybersecurity Deep Work (Hands-on)', time: '13:30', duration: 240, days: [0,1,2,3,4,5,6], anchor: 'fixed', isActive: true },
+    { id: 'routine-asr', name: 'Asr Prayer', time: '16:00', duration: 20, days: [0,1,2,3,4,5,6], anchor: 'prayer-asr', isActive: true },
+    { id: 'routine-gym', name: 'Gym Workout Session', time: '17:00', duration: 60, days: [1,2,3,5], anchor: 'fixed', isActive: true },
+    { id: 'routine-maghrib', name: 'Maghrib Prayer', time: '18:35', duration: 20, days: [0,1,2,3,4,5,6], anchor: 'prayer-maghrib', isActive: true },
+    { id: 'routine-quran-pm', name: 'Qur’an Evening Recitation', time: '19:00', duration: 25, days: [0,1,2,3,4,5,6], anchor: 'after-maghrib', isActive: true },
+    { id: 'routine-english', name: 'English Communication & Practice', time: '19:45', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'fixed', isActive: true },
+    { id: 'routine-isha', name: 'Isha Prayer & Witr', time: '20:30', duration: 25, days: [0,1,2,3,4,5,6], anchor: 'prayer-isha', isActive: true },
+    { id: 'routine-review-sleep', name: 'Daily Review & Sleep Wind Down', time: '21:30', duration: 30, days: [0,1,2,3,4,5,6], anchor: 'fixed', isActive: true }
+  ],
+
+  // 9-Month Transformation Core Goals
+  DEFAULT_GOALS: [
+    { id: 'goal-1', title: 'Offensive Cybersecurity Mastery', pillar: 'Cybersecurity', status: 'IN_PROGRESS', targetDate: '9-Month Completion' },
+    { id: 'goal-2', title: 'Complete ADCD Curriculum', pillar: 'Cybersecurity', status: 'IN_PROGRESS', targetDate: 'ADCD Schedule' },
+    { id: 'goal-3', title: 'Prepare for & Earn eCPPT / eCIR', pillar: 'Cybersecurity', status: 'NOT_STARTED', targetDate: 'Month 7-8' },
+    { id: 'goal-4', title: 'Attain High Fluency in English Communication', pillar: 'English', status: 'IN_PROGRESS', targetDate: '9-Month Daily' },
+    { id: 'goal-5', title: 'Achieve IELTS Overall 7.5 (Min 7.0 in all bands)', pillar: 'English', status: 'IN_PROGRESS', targetDate: 'Mock Milestone' },
+    { id: 'goal-6', title: 'Reach 70 kg Solid Bodyweight (Clean Bulk)', pillar: 'Fitness', status: 'IN_PROGRESS', targetDate: '9-Month Target' },
+    { id: 'goal-7', title: 'Develop High Leadership & Executive Soft Skills', pillar: 'Discipline', status: 'IN_PROGRESS', targetDate: 'Ongoing' },
+    { id: 'goal-8', title: 'Achieve Constant 5 Daily Prayers & Tahajjud Discipline', pillar: 'Deen', status: 'IN_PROGRESS', targetDate: 'Daily' },
+    { id: 'goal-9', title: 'Make Qur’an Tafsir, Memorization & Recitation Lifelong Habit', pillar: 'Deen', status: 'IN_PROGRESS', targetDate: 'Daily' }
+  ],
+
+  // Complete 114 Surahs Metadata with Exact Verse Counts
+  SURAHS: [
+    { number: 1, name: 'Al-Fatihah', verses: 7 },
+    { number: 2, name: 'Al-Baqarah', verses: 286 },
+    { number: 3, name: 'Ali \'Imran', verses: 200 },
+    { number: 4, name: 'An-Nisa', verses: 176 },
+    { number: 5, name: 'Al-Ma\'idah', verses: 120 },
+    { number: 6, name: 'Al-An\'am', verses: 165 },
+    { number: 7, name: 'Al-A\'raf', verses: 206 },
+    { number: 8, name: 'Al-Anfal', verses: 75 },
+    { number: 9, name: 'At-Tawbah', verses: 129 },
+    { number: 10, name: 'Yunus', verses: 109 },
+    { number: 11, name: 'Hud', verses: 123 },
+    { number: 12, name: 'Yusuf', verses: 111 },
+    { number: 13, name: 'Ar-Ra\'d', verses: 43 },
+    { number: 14, name: 'Ibrahim', verses: 52 },
+    { number: 15, name: 'Al-Hijr', verses: 99 },
+    { number: 16, name: 'An-Nahl', verses: 128 },
+    { number: 17, name: 'Al-Isra', verses: 111 },
+    { number: 18, name: 'Al-Kahf', verses: 110 },
+    { number: 19, name: 'Maryam', verses: 98 },
+    { number: 20, name: 'Ta-Ha', verses: 135 },
+    { number: 21, name: 'Al-Anbiya', verses: 112 },
+    { number: 22, name: 'Al-Hajj', verses: 78 },
+    { number: 23, name: 'Al-Mu\'minun', verses: 118 },
+    { number: 24, name: 'An-Nur', verses: 64 },
+    { number: 25, name: 'Al-Furqan', verses: 77 },
+    { number: 26, name: 'Ash-Shu\'ara', verses: 227 },
+    { number: 27, name: 'An-Naml', verses: 93 },
+    { number: 28, name: 'Al-Qasas', verses: 88 },
+    { number: 29, name: 'Al-\'Ankabut', verses: 69 },
+    { number: 30, name: 'Ar-Rum', verses: 60 },
+    { number: 31, name: 'Luqman', verses: 34 },
+    { number: 32, name: 'As-Sajdah', verses: 30 },
+    { number: 33, name: 'Al-Ahzab', verses: 73 },
+    { number: 34, name: 'Saba', verses: 54 },
+    { number: 35, name: 'Fatir', verses: 45 },
+    { number: 36, name: 'Ya-Sin', verses: 83 },
+    { number: 37, name: 'As-Saffat', verses: 182 },
+    { number: 38, name: 'Sad', verses: 88 },
+    { number: 39, name: 'Az-Zumar', verses: 75 },
+    { number: 40, name: 'Ghafir', verses: 85 },
+    { number: 41, name: 'Fussilat', verses: 54 },
+    { number: 42, name: 'Ash-Shura', verses: 53 },
+    { number: 43, name: 'Az-Zukhruf', verses: 89 },
+    { number: 44, name: 'Ad-Dukhan', verses: 59 },
+    { number: 45, name: 'Al-Jathiyah', verses: 37 },
+    { number: 46, name: 'Al-Ahqaf', verses: 35 },
+    { number: 47, name: 'Muhammad', verses: 38 },
+    { number: 48, name: 'Al-Fath', verses: 29 },
+    { number: 49, name: 'Al-Hujurat', verses: 18 },
+    { number: 50, name: 'Qaf', verses: 45 },
+    { number: 51, name: 'Adh-Dhariyat', verses: 60 },
+    { number: 52, name: 'At-Tur', verses: 49 },
+    { number: 53, name: 'An-Najm', verses: 62 },
+    { number: 54, name: 'Al-Qamar', verses: 55 },
+    { number: 55, name: 'Ar-Rahman', verses: 78 },
+    { number: 56, name: 'Al-Waqi\'ah', verses: 96 },
+    { number: 57, name: 'Al-Hadid', verses: 29 },
+    { number: 58, name: 'Al-Mujadila', verses: 22 },
+    { number: 59, name: 'Al-Hashr', verses: 24 },
+    { number: 60, name: 'Al-Mumtahanah', verses: 13 },
+    { number: 61, name: 'As-Saff', verses: 14 },
+    { number: 62, name: 'Al-Jumu\'ah', verses: 11 },
+    { number: 63, name: 'Al-Munafiqun', verses: 11 },
+    { number: 64, name: 'At-Taghabun', verses: 18 },
+    { number: 65, name: 'At-Talaq', verses: 12 },
+    { number: 66, name: 'At-Tahrim', verses: 12 },
+    { number: 67, name: 'Al-Mulk', verses: 30 },
+    { number: 68, name: 'Al-Qalam', verses: 52 },
+    { number: 69, name: 'Al-Haqqah', verses: 52 },
+    { number: 70, name: 'Al-Ma\'arij', verses: 44 },
+    { number: 71, name: 'Nuh', verses: 28 },
+    { number: 72, name: 'Al-Jinn', verses: 28 },
+    { number: 73, name: 'Al-Muzzammil', verses: 20 },
+    { number: 74, name: 'Al-Muddaththir', verses: 56 },
+    { number: 75, name: 'Al-Qiyamah', verses: 40 },
+    { number: 76, name: 'Al-Insan', verses: 31 },
+    { number: 77, name: 'Al-Mursalat', verses: 50 },
+    { number: 78, name: 'An-Naba', verses: 40 },
+    { number: 79, name: 'An-Nazi\'at', verses: 46 },
+    { number: 80, name: '\'Abasa', verses: 42 },
+    { number: 81, name: 'At-Takwir', verses: 29 },
+    { number: 82, name: 'Al-Infitar', verses: 19 },
+    { number: 83, name: 'Al-Mutaffifin', verses: 36 },
+    { number: 84, name: 'Al-Inshiqaq', verses: 25 },
+    { number: 85, name: 'Al-Buruj', verses: 22 },
+    { number: 86, name: 'At-Tariq', verses: 17 },
+    { number: 87, name: 'Al-A\'la', verses: 19 },
+    { number: 88, name: 'Al-Ghashiyah', verses: 26 },
+    { number: 89, name: 'Al-Fajr', verses: 30 },
+    { number: 90, name: 'Al-Balad', verses: 20 },
+    { number: 91, name: 'Ash-Shams', verses: 15 },
+    { number: 92, name: 'Al-Layl', verses: 21 },
+    { number: 93, name: 'Ad-Duha', verses: 11 },
+    { number: 94, name: 'Ash-Sharh', verses: 8 },
+    { number: 95, name: 'At-Tin', verses: 8 },
+    { number: 96, name: 'Al-\'Alaq', verses: 19 },
+    { number: 97, name: 'Al-Qadr', verses: 5 },
+    { number: 98, name: 'Al-Bayyinah', verses: 8 },
+    { number: 99, name: 'Az-Zalzalah', verses: 8 },
+    { number: 100, name: 'Al-\'Adiyat', verses: 11 },
+    { number: 101, name: 'Al-Qari\'ah', verses: 11 },
+    { number: 102, name: 'At-Takathur', verses: 8 },
+    { number: 103, name: 'Al-\'Asr', verses: 3 },
+    { number: 104, name: 'Al-Humazah', verses: 9 },
+    { number: 105, name: 'Al-Fil', verses: 5 },
+    { number: 106, name: 'Quraysh', verses: 4 },
+    { number: 107, name: 'Al-Ma\'un', verses: 7 },
+    { number: 108, name: 'Al-Kawthar', verses: 3 },
+    { number: 109, name: 'Al-Kafirun', verses: 6 },
+    { number: 110, name: 'An-Nasr', verses: 3 },
+    { number: 111, name: 'Al-Masad', verses: 5 },
+    { number: 112, name: 'Al-Ikhlas', verses: 4 },
+    { number: 113, name: 'Al-Falaq', verses: 5 },
+    { number: 114, name: 'An-Nas', verses: 6 }
+  ]
+};
+
+if (typeof window !== 'undefined') {
+  window.CONFIG = CONFIG;
+}
