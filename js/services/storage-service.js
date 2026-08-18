@@ -177,9 +177,14 @@ const StorageService = {
         const cleanTime = typeof DateUtils !== 'undefined' && DateUtils.minutesToHHMM
           ? DateUtils.minutesToHHMM(parsedMins)
           : rawTime;
-        const parsedDur = (r.duration !== undefined && r.duration !== null && r.duration !== '')
-          ? (parseInt(r.duration, 10) || null)
-          : (d && d.duration !== undefined ? d.duration : null);
+        let parsedDur = null;
+        if (r.duration !== undefined) {
+          parsedDur = (r.duration !== null && r.duration !== '' && parseInt(r.duration, 10) > 0)
+            ? parseInt(r.duration, 10)
+            : null;
+        } else if (d && d.duration !== undefined) {
+          parsedDur = d.duration;
+        }
         return {
           ...r,
           time: cleanTime,
