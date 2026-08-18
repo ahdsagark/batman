@@ -5,19 +5,45 @@
 
 const SyncService = {
   isSyncing: false,
+  debounceTimer: null,
 
   init() {
-    // Listen for online events to auto-trigger synchronization
-    window.addEventListener('online', () => {
-      UI.showToast('Online: Synchronizing...', 'info', 2000);
-      this.syncNow();
-    });
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      // 1. Auto-sync on data & queue mutations (triggered on every prayer, timer, weight, surah update)
+      window.addEventListener('batman:queue-updated', () => {
+        this.scheduleDebouncedSync(2000);
+      });
 
-    window.addEventListener('offline', () => {
-      this.updateOfflineUI();
-    });
+      window.addEventListener('batman:data-updated', () => {
+        this.scheduleDebouncedSync(2500);
+      });
 
-    // Wire sync status pill click
+      // 2. Auto-sync when internet reconnects
+      window.addEventListener('online', () => {
+        this.scheduleDebouncedSync(1000);
+      });
+
+      window.addEventListener('offline', () => {
+        this.updateOfflineUI();
+      });
+
+      window.addEventListener('focus', () => {
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+          this.scheduleDebouncedSync(1000);
+        }
+      });
+    }
+
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      // 3. Auto-sync when user returns/focuses the app on mobile or desktop
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && typeof navigator !== 'undefined' && navigator.onLine) {
+          this.scheduleDebouncedSync(1000);
+        }
+      });
+    }
+
+    // 4. Wire header sync pill click
     const syncStatusPill = document.getElementById('sync-status');
     if (syncStatusPill) {
       syncStatusPill.addEventListener('click', () => {
@@ -25,12 +51,42 @@ const SyncService = {
       });
     }
 
-    // Check initial status
-    if (!navigator.onLine) {
-      this.updateOfflineUI();
-    } else {
-      StorageService.updateSyncUI();
-    }
+    // 5. Periodic background heartbeat check (every 30 seconds)
+    setInterval(() => {
+      if (navigator.onLine && !this.isSyncing) {
+        const queue = StorageService.getSyncQueue();
+        if (queue.length > 0) {
+          this.syncNow(false);
+        }
+      }
+    }, 30000);
+
+    // 6. Initial app boot sync check (1.5s delay)
+    setTimeout(() => {
+      if (navigator.onLine && !this.isSyncing) {
+        const queue = StorageService.getSyncQueue();
+        if (queue.length > 0) {
+          this.syncNow(false);
+        } else {
+          StorageService.updateSyncUI();
+        }
+      } else {
+        StorageService.updateSyncUI();
+      }
+    }, 1500);
+  },
+
+  scheduleDebouncedSync(delayMs = 2000) {
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => {
+      const settings = StorageService.getSettings();
+      if (settings.gasWebAppUrl && navigator.onLine && !this.isSyncing) {
+        const queue = StorageService.getSyncQueue();
+        if (queue.length > 0) {
+          this.syncNow(false);
+        }
+      }
+    }, delayMs);
   },
 
   updateOfflineUI() {

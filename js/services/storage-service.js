@@ -325,6 +325,9 @@ const StorageService = {
 
     this.safeSetItem(this.KEYS.SYNC_QUEUE, queue);
     this.updateSyncUI();
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('batman:queue-updated', { detail: { queueLength: queue.length } }));
+    }
   },
 
   removeSyncItem(itemId) {
