@@ -130,6 +130,15 @@
   color: #ffffff;
 }
 
+.btn-warning {
+  background-color: var(--status-warning);
+  color: #080a0e;
+  font-weight: 700;
+}
+.btn-warning:hover {
+  filter: brightness(1.1);
+}
+
 .btn-outline {
   background: transparent;
   border: 1px solid var(--border-medium);

@@ -53,7 +53,7 @@ const DateUtils = {
   },
 
   /**
-   * Convert seconds into "2h 35m" or "45m"
+   * Convert seconds into "2h 35m", "4h", "3h 05m", or "45m"
    * @param {number} totalSeconds 
    */
   formatDurationHoursMins(totalSeconds) {
@@ -61,8 +61,11 @@ const DateUtils = {
     const hours = Math.floor(s / 3600);
     const mins = Math.floor((s % 3600) / 60);
 
-    if (hours > 0) {
-      return `${hours}h ${String(mins).padStart(2, '0')}m`;
+    if (hours > 0 && mins === 0) {
+      return `${hours}h`;
+    }
+    if (hours > 0 && mins > 0) {
+      return `${hours}h ${mins < 10 ? '0' + mins : mins}m`;
     }
     return `${mins}m`;
   },

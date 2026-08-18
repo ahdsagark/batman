@@ -177,6 +177,8 @@ const DashboardModule = {
       let isCompleted = false;
       let buttonText = 'COMPLETE';
       let buttonClass = 'btn-outline';
+      let isTimeBased = false;
+      let progressText = '';
 
       // 1. Check 5 Prayers by ID
       if (r.id === 'routine-fajr' || r.id === 'routine-dhuhr' || r.id === 'routine-asr' || r.id === 'routine-maghrib' || r.id === 'routine-isha') {
@@ -236,21 +238,25 @@ const DashboardModule = {
           buttonClass = 'btn-success';
         }
       }
-      // 7. Cyber Deep Work
+      // 7. Cyber Deep Work (Time-based: 4h target)
       else if (r.id === 'routine-cyber-work') {
-        if ((log.cyberSeconds || 0) >= (CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400)) {
-          isCompleted = true;
-          buttonText = 'DONE ✓';
-          buttonClass = 'btn-success';
-        }
+        isTimeBased = true;
+        const cyberSecs = log.cyberSeconds || 0;
+        const targetSecs = CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400; // 4h
+        isCompleted = cyberSecs >= targetSecs;
+        buttonText = 'LOG TIME';
+        buttonClass = isCompleted ? 'btn-success' : (cyberSecs > 0 ? 'btn-secondary' : 'btn-outline');
+        progressText = `${DateUtils.formatDurationHoursMins(cyberSecs)} / 4h${isCompleted ? ' ✓' : ''}`;
       }
-      // 8. English Communication
+      // 8. English Communication & Practice (Time-based: 30m target)
       else if (r.id === 'routine-english') {
-        if ((log.englishSeconds || 0) >= (CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600)) {
-          isCompleted = true;
-          buttonText = 'DONE ✓';
-          buttonClass = 'btn-success';
-        }
+        isTimeBased = true;
+        const englishSecs = log.englishSeconds || 0;
+        const targetSecs = CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 1800; // 30m
+        isCompleted = englishSecs >= targetSecs;
+        buttonText = 'LOG TIME';
+        buttonClass = isCompleted ? 'btn-success' : (englishSecs > 0 ? 'btn-secondary' : 'btn-outline');
+        progressText = `${DateUtils.formatDurationHoursMins(englishSecs)} / 30m${isCompleted ? ' ✓' : ''}`;
       }
       // 9. Daily Review & Sleep Wind Down
       else if (r.id === 'routine-review-sleep') {
@@ -276,7 +282,9 @@ const DashboardModule = {
         endTimeStr: duration !== null ? DateUtils.minutesToHHMM((startMins + duration) % 1440) : '',
         isCompleted,
         buttonText,
-        buttonClass
+        buttonClass,
+        isTimeBased,
+        progressText
       });
     });
 
@@ -292,6 +300,16 @@ const DashboardModule = {
     const routines = StorageService.getRoutines();
     const routine = routines.find(r => r.id === routineId);
     if (!routine) return;
+
+    // Time-based quick-actions open the dedicated time logging prompt
+    if (routineId === 'routine-cyber-work') {
+      this.openTimeLogModal('CYBER');
+      return;
+    }
+    if (routineId === 'routine-english') {
+      this.openTimeLogModal('ENGLISH');
+      return;
+    }
 
     const updates = {};
     let customRoutines = Array.isArray(log.customRoutines) ? [...log.customRoutines] : [];
@@ -354,20 +372,6 @@ const DashboardModule = {
       updates.gymAttended = !isDone;
       UI.showToast(`Gym Workout ${isDone ? 'marked unattended' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
     }
-    // 7. Cyber Deep Work (Toggles 4h completed target)
-    else if (routineId === 'routine-cyber-work') {
-      const targetSecs = CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400;
-      const isDone = (log.cyberSeconds || 0) >= targetSecs;
-      updates.cyberSeconds = isDone ? 0 : targetSecs;
-      UI.showToast(`Cyber Deep Work ${isDone ? 'reset to 0h' : 'completed (4h) ✓'}`, isDone ? 'info' : 'success', 2000);
-    }
-    // 8. English Communication & Practice (Toggles 1h target)
-    else if (routineId === 'routine-english') {
-      const targetSecs = CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600;
-      const isDone = (log.englishSeconds || 0) >= targetSecs;
-      updates.englishSeconds = isDone ? 0 : targetSecs;
-      UI.showToast(`English Practice ${isDone ? 'reset to 0m' : 'completed (1h) ✓'}`, isDone ? 'info' : 'success', 2000);
-    }
     // 9. Daily Review & Sleep Wind Down
     else if (routineId === 'routine-review-sleep') {
       const isDone = customRoutines.includes('routine-review-sleep') || Boolean(log.sleepHours);
@@ -396,6 +400,178 @@ const DashboardModule = {
     UI.vibrate(10);
     this.renderDashboard();
     window.dispatchEvent(new CustomEvent('batman:data-updated'));
+  },
+
+  /**
+   * Home Quick-Action Time Logging Modal for Cybersecurity & English Practice
+   * Manually sets the final completed total for TODAY (does NOT add).
+   */
+  openTimeLogModal(type) {
+    const isCyber = type === 'CYBER';
+    const activeTimer = StorageService.getActiveTimer();
+
+    // Prevent manual entry while a timer is actively ticking
+    if (activeTimer && activeTimer.type === type && activeTimer.state === 'RUNNING') {
+      UI.vibrate([15, 50, 15]);
+      UI.showToast("Stop the active timer before manually setting today's total.", 'warning', 4000);
+      return;
+    }
+
+    const todayISO = DateUtils.getTodayISO();
+    const log = StorageService.getDayLog(todayISO);
+    const currentSecs = isCyber ? (log.cyberSeconds || 0) : (log.englishSeconds || 0);
+    const currentFormatted = DateUtils.formatDurationHoursMins(currentSecs) || '0m';
+    const title = isCyber ? 'LOG CYBERSECURITY TIME' : 'LOG ENGLISH PRACTICE';
+    const targetText = isCyber ? '4h Target' : '30m Target';
+
+    const currentHours = Math.floor(currentSecs / 3600);
+    const currentMins = Math.floor((currentSecs % 3600) / 60);
+
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <div style="margin-bottom: var(--space-4);">
+        <div style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--space-3); line-height: 1.4;">
+          How much did you complete today? <span style="font-size: var(--text-xs); color: var(--accent-primary); font-weight: 700;">(${targetText})</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3);">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-weight: 700; font-size: var(--text-xs);">Hours (0–24)</label>
+            <input type="number" id="timelog-hours" class="form-input" min="0" max="24" step="1" placeholder="0" value="${currentHours > 0 ? currentHours : ''}" style="text-align: center; font-size: var(--text-xl); font-family: var(--font-mono); font-weight: 800; height: 48px;">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-weight: 700; font-size: var(--text-xs);">Minutes (0–59)</label>
+            <input type="number" id="timelog-minutes" class="form-input" min="0" max="59" step="1" placeholder="0" value="${currentMins > 0 ? currentMins : ''}" style="text-align: center; font-size: var(--text-xl); font-family: var(--font-mono); font-weight: 800; height: 48px;">
+          </div>
+        </div>
+
+        <!-- Live Comparison Card -->
+        <div style="background-color: var(--bg-surface-elevated); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: var(--space-4);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--text-xs); margin-bottom: 6px;">
+            <span style="color: var(--text-muted); font-weight: 600;">Current recorded:</span>
+            <span style="color: var(--text-primary); font-weight: 700; font-family: var(--font-mono);">${currentFormatted}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--text-sm); border-top: 1px solid var(--border-subtle); padding-top: 6px;">
+            <span style="color: var(--text-secondary); font-weight: 700;">New total:</span>
+            <span id="timelog-new-preview" style="color: var(--accent-primary); font-weight: 800; font-family: var(--font-mono); font-size: var(--text-base);">${currentFormatted}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: var(--space-2);">
+          <button id="timelog-cancel-btn" class="btn btn-secondary" style="flex: 1; min-height: 44px; font-weight: 700;">CANCEL</button>
+          <button id="timelog-save-btn" class="btn btn-primary" style="flex: 1.5; min-height: 44px; font-weight: 700;">SAVE</button>
+        </div>
+      </div>
+    `;
+
+    UI.openSheet(title, container);
+
+    const hoursInput = container.querySelector('#timelog-hours');
+    const minsInput = container.querySelector('#timelog-minutes');
+    const previewEl = container.querySelector('#timelog-new-preview');
+
+    const updatePreview = () => {
+      const h = parseInt(hoursInput.value, 10) || 0;
+      const m = parseInt(minsInput.value, 10) || 0;
+      const totalSecs = (h * 3600) + (m * 60);
+      previewEl.textContent = DateUtils.formatDurationHoursMins(totalSecs) || '0m';
+    };
+
+    hoursInput.addEventListener('input', updatePreview);
+    minsInput.addEventListener('input', updatePreview);
+
+    container.querySelector('#timelog-cancel-btn').addEventListener('click', () => {
+      UI.closeSheet();
+    });
+
+    const executeSave = (newSecs) => {
+      const updates = {};
+      if (isCyber) updates.cyberSeconds = newSecs;
+      else updates.englishSeconds = newSecs;
+
+      StorageService.saveDayLog(todayISO, updates);
+      UI.closeSheet();
+      UI.vibrate(10);
+      UI.showToast(`${isCyber ? 'Cybersecurity' : 'English'} total set to ${DateUtils.formatDurationHoursMins(newSecs)} ✓`, 'success', 3000);
+      this.renderDashboard();
+      window.dispatchEvent(new CustomEvent('batman:data-updated'));
+    };
+
+    container.querySelector('#timelog-save-btn').addEventListener('click', () => {
+      const rawH = hoursInput.value.trim();
+      const rawM = minsInput.value.trim();
+
+      if (rawH === '' && rawM === '') {
+        UI.showToast("Please enter some time.", "warning");
+        return;
+      }
+
+      const h = rawH === '' ? 0 : parseInt(rawH, 10);
+      const m = rawM === '' ? 0 : parseInt(rawM, 10);
+
+      // Strict validation
+      if (isNaN(h) || isNaN(m) || h < 0 || m < 0 || h > 24 || m > 59) {
+        UI.showToast("Please enter valid hours (0–24) and minutes (0–59).", "error");
+        return;
+      }
+
+      const totalSecs = (h * 3600) + (m * 60);
+      if (totalSecs > 86400) {
+        UI.showToast("Total time cannot exceed 24 hours.", "error");
+        return;
+      }
+
+      if (totalSecs === 0) {
+        UI.showToast("Please enter some time.", "warning");
+        return;
+      }
+
+      // If user enters a lower duration than current recorded total, prompt confirmation
+      if (totalSecs < currentSecs) {
+        const confirmContainer = document.createElement('div');
+        confirmContainer.innerHTML = `
+          <div style="text-align: center; padding: var(--space-2) 0 var(--space-4) 0;">
+            <div style="font-size: 2rem; margin-bottom: var(--space-2);">⚠️</div>
+            <div style="font-size: var(--text-lg); font-weight: 800; color: var(--status-warning); margin-bottom: var(--space-2);">
+              REPLACE TODAY'S TIME?
+            </div>
+            <div style="background-color: var(--bg-surface-elevated); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: var(--space-3); text-align: left;">
+              <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); margin-bottom: 4px;">
+                <span style="color: var(--text-muted); font-weight: 600;">Current:</span>
+                <strong style="color: var(--text-primary); font-family: var(--font-mono);">${currentFormatted}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm); border-top: 1px solid var(--border-subtle); padding-top: 4px;">
+                <span style="color: var(--status-warning); font-weight: 700;">New:</span>
+                <strong style="color: var(--status-warning); font-family: var(--font-mono);">${DateUtils.formatDurationHoursMins(totalSecs)}</strong>
+              </div>
+            </div>
+            <div style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-4);">
+              This will replace today's current recorded duration.
+            </div>
+            <div style="display: flex; gap: var(--space-2);">
+              <button id="replace-cancel-btn" class="btn btn-secondary" style="flex: 1; min-height: 44px; font-weight: 700;">CANCEL</button>
+              <button id="replace-confirm-btn" class="btn btn-warning" style="flex: 1; min-height: 44px; font-weight: 700;">CONFIRM</button>
+            </div>
+          </div>
+        `;
+
+        UI.openSheet("Replace Today's Time?", confirmContainer);
+
+        confirmContainer.querySelector('#replace-cancel-btn').addEventListener('click', () => {
+          UI.closeSheet();
+        });
+
+        confirmContainer.querySelector('#replace-confirm-btn').addEventListener('click', () => {
+          executeSave(totalSecs);
+        });
+      } else {
+        executeSave(totalSecs);
+      }
+    });
+
+    setTimeout(() => {
+      if (hoursInput && typeof hoursInput.focus === 'function') hoursInput.focus();
+    }, 150);
   },
 
   updateActiveActivity() {
@@ -490,25 +666,38 @@ const DashboardModule = {
 
     container.innerHTML = timeline.map(item => {
       const isCurrent = currentMins >= item.startMins && currentMins < item.endMins;
-      const statusSymbol = item.isCompleted ? '✓' : (isCurrent ? '→' : '○');
+      const isTimeProgressing = item.isTimeBased && item.progressText && !item.progressText.startsWith('0m');
+
+      let statusSymbol = '○';
+      if (item.isCompleted) statusSymbol = '✓';
+      else if (isCurrent || isTimeProgressing) statusSymbol = '→';
+
       const statusClass = item.isCompleted ? 'schedule-completed' : (isCurrent ? 'schedule-current' : 'schedule-upcoming');
       const highlightStyle = isCurrent ? 'background-color: var(--bg-surface-elevated); border-left: 3px solid var(--accent-primary); padding-left: 10px; margin: 4px 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;' : '';
 
       let btnLabel = item.buttonText;
       let btnClass = item.buttonClass;
-      if (!item.isCompleted && isCurrent) {
+      if (!item.isTimeBased && !item.isCompleted && isCurrent) {
         btnLabel = 'MARK DONE';
         btnClass = 'btn-primary';
       }
+
+      const progressBadge = item.isTimeBased && item.progressText ? `
+        <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; color: ${item.isCompleted ? 'var(--status-success)' : (isTimeProgressing ? 'var(--accent-primary)' : 'var(--text-muted)')}; margin-left: 6px;">
+          • ${item.progressText}
+        </span>
+      ` : '';
 
       return `
         <div class="prayer-row ${statusClass}" style="padding: 10px 0; ${highlightStyle} display: flex; align-items: center; justify-content: space-between;">
           <div class="prayer-info" style="flex: 1; cursor: pointer; padding-right: 8px;" data-action="toggle-routine" data-routine-id="${item.id}">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 800; font-family: var(--font-mono); font-size: var(--text-sm); color: ${item.isCompleted ? 'var(--status-success)' : (isCurrent ? 'var(--accent-primary)' : 'var(--text-muted)')};">${statusSymbol}</span>
+              <span style="font-weight: 800; font-family: var(--font-mono); font-size: var(--text-sm); color: ${item.isCompleted ? 'var(--status-success)' : ((isCurrent || isTimeProgressing) ? 'var(--accent-primary)' : 'var(--text-muted)')};">${statusSymbol}</span>
               <span style="font-size: var(--text-sm); font-weight: ${isCurrent ? '700' : '600'}; color: ${isCurrent ? 'var(--text-primary)' : (item.isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)')}; text-decoration: ${item.isCompleted ? 'line-through' : 'none'};">${item.name}</span>
             </div>
-            <span class="prayer-time" style="margin-left: 20px;">${DateUtils.format12Hour(item.startTimeStr)}${item.duration ? ` – ${DateUtils.format12Hour(item.endTimeStr)}` : ''}</span>
+            <span class="prayer-time" style="margin-left: 20px;">
+              ${DateUtils.format12Hour(item.startTimeStr)}${item.duration ? ` – ${DateUtils.format12Hour(item.endTimeStr)}` : ''}${progressBadge}
+            </span>
           </div>
           <button class="btn ${btnClass} routine-toggle-btn" 
                   data-routine-id="${item.id}">
