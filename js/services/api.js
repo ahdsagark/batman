@@ -5,13 +5,14 @@
 
 const ApiService = {
   /**
-   * Send JSON request to Google Apps Script Web App
+   * Send JSON request to Google Apps Script Web App with Application Token
    * @param {string} endpointUrl 
    * @param {string} action 
    * @param {object} payload 
    * @param {number} [timeoutMs=10000] 
+   * @param {string} [apiToken='batman-secret-2026']
    */
-  async request(endpointUrl, action, payload = {}, timeoutMs = 10000) {
+  async request(endpointUrl, action, payload = {}, timeoutMs = 10000, apiToken = 'batman-secret-2026') {
     if (!endpointUrl || !endpointUrl.startsWith('http')) {
       throw new Error('Google Apps Script URL is not configured.');
     }
@@ -24,13 +25,13 @@ const ApiService = {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      // Use text/plain or no-cors considerations typical for Google Apps Script redirects
       const response = await fetch(endpointUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
         body: JSON.stringify({
+          token: apiToken,
           action,
           payload,
           timestamp: DateUtils.getNowISO()
@@ -62,18 +63,20 @@ const ApiService = {
   /**
    * Test connection to Google Apps Script Web App
    * @param {string} endpointUrl 
+   * @param {string} [apiToken='batman-secret-2026']
    */
-  async testConnection(endpointUrl) {
-    return this.request(endpointUrl, 'ping', { clientTime: DateUtils.getNowISO() }, 8000);
+  async testConnection(endpointUrl, apiToken = 'batman-secret-2026') {
+    return this.request(endpointUrl, 'ping', { clientTime: DateUtils.getNowISO() }, 8000, apiToken);
   },
 
   /**
    * Send batch of items to Google Apps Script for idempotent upsert
    * @param {string} endpointUrl 
    * @param {Array<object>} items 
+   * @param {string} [apiToken='batman-secret-2026']
    */
-  async syncBatch(endpointUrl, items) {
-    return this.request(endpointUrl, 'syncBatch', { items });
+  async syncBatch(endpointUrl, items, apiToken = 'batman-secret-2026') {
+    return this.request(endpointUrl, 'syncBatch', { items }, 12000, apiToken);
   }
 };
 

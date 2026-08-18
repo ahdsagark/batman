@@ -9,12 +9,39 @@ const EnglishModule = {
   sessionElapsedSeconds: 0,
 
   init() {
+    this.restoreActiveTimer();
     this.renderEnglish();
     this.bindEvents();
 
     window.addEventListener('batman:tab-switched', (e) => {
       if (e.detail.tab === 'growth') this.renderEnglish();
     });
+  },
+
+  restoreActiveTimer() {
+    const saved = StorageService.getActiveTimer();
+    if (!saved || saved.type !== 'ENGLISH') return;
+
+    if (saved.state === 'RUNNING') {
+      this.timerState = 'RUNNING';
+      this.sessionStartTimestamp = saved.startTimestamp;
+      this.sessionElapsedSeconds = Math.max(0, Math.floor((Date.now() - this.sessionStartTimestamp) / 1000));
+      
+      this.timerInterval = setInterval(() => {
+        this.sessionElapsedSeconds = Math.floor((Date.now() - this.sessionStartTimestamp) / 1000);
+        const displayEl = document.getElementById('english-timer-display');
+        if (displayEl) {
+          displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
+        }
+      }, 1000);
+    } else if (saved.state === 'PAUSED') {
+      this.timerState = 'PAUSED';
+      this.sessionElapsedSeconds = saved.elapsedSeconds || 0;
+      const displayEl = document.getElementById('english-timer-display');
+      if (displayEl) {
+        displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
+      }
+    }
   },
 
   bindEvents() {
@@ -66,6 +93,11 @@ const EnglishModule = {
       }
     }
 
+    // 3. Update Timer Display & Controls UI
+    const displayEl = document.getElementById('english-timer-display');
+    if (displayEl) {
+      displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
+    }
     this.updateControlsUI();
   },
 
@@ -74,6 +106,12 @@ const EnglishModule = {
 
     this.timerState = 'RUNNING';
     this.sessionStartTimestamp = Date.now() - (this.sessionElapsedSeconds * 1000);
+
+    StorageService.saveActiveTimer({
+      type: 'ENGLISH',
+      state: 'RUNNING',
+      startTimestamp: this.sessionStartTimestamp
+    });
 
     this.timerInterval = setInterval(() => {
       this.sessionElapsedSeconds = Math.floor((Date.now() - this.sessionStartTimestamp) / 1000);
@@ -95,6 +133,12 @@ const EnglishModule = {
     this.timerInterval = null;
     this.timerState = 'PAUSED';
 
+    StorageService.saveActiveTimer({
+      type: 'ENGLISH',
+      state: 'PAUSED',
+      elapsedSeconds: this.sessionElapsedSeconds
+    });
+
     UI.vibrate(10);
     this.updateControlsUI();
   },
@@ -105,6 +149,8 @@ const EnglishModule = {
     clearInterval(this.timerInterval);
     this.timerInterval = null;
     this.timerState = 'STOPPED';
+
+    StorageService.clearActiveTimer();
 
     const recordedSeconds = this.sessionElapsedSeconds;
     this.sessionElapsedSeconds = 0;

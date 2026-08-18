@@ -78,34 +78,86 @@ const SleepModule = {
     const todayISO = DateUtils.getTodayISO();
     const log = StorageService.getDayLog(todayISO);
 
+    const initialBedtime = log.bedtime || '22:30';
+    const initialWaketime = log.waketime || '06:00';
+
+    // Calculate initial duration from times
+    const initialDuration = CalcUtils.calculateSleepDuration(initialBedtime, initialWaketime);
+    const initialHours = log.sleepHours ? parseFloat(log.sleepHours) : (initialDuration ? initialDuration.hours : 7.5);
+
     const form = document.createElement('div');
     form.innerHTML = `
+      <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border: 1px solid var(--border-subtle);">
+        <div style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: var(--space-2); display: flex; justify-content: space-between; align-items: center;">
+          <span>Bedtime & Wake Time</span>
+          <span style="font-size: 10px; color: var(--accent-primary); font-weight: 600;">Auto-syncs Duration</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="modal-bedtime">Bedtime (Slept)</label>
+            <input type="time" id="modal-bedtime" class="form-input" value="${initialBedtime}">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="modal-waketime">Wake Time (Woke)</label>
+            <input type="time" id="modal-waketime" class="form-input" value="${initialWaketime}">
+          </div>
+        </div>
+        <div id="sleep-calc-preview" style="margin-top: var(--space-2); font-size: var(--text-xs); color: var(--accent-primary); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+          <span>⏱️ Calculated: <strong>${initialDuration ? initialDuration.display : `${initialHours} hrs`}</strong></span>
+        </div>
+      </div>
+
       <div class="form-group">
-        <label class="form-label">Total Sleep Duration (Hours)</label>
-        <input type="number" id="modal-sleep-hours" class="form-input" min="1" max="16" step="0.25" value="${log.sleepHours || 7.5}">
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3);">
-        <div>
-          <label class="form-label">Bedtime</label>
-          <input type="time" id="modal-bedtime" class="form-input" value="${log.bedtime || '22:00'}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label class="form-label" for="modal-sleep-hours" style="margin-bottom: 0;">Total Sleep Duration (Hours)</label>
+          <span id="sleep-calc-badge" class="badge badge-masjid" style="font-size: 10px;">Auto-calculated</span>
         </div>
-        <div>
-          <label class="form-label">Wake Time</label>
-          <input type="time" id="modal-waketime" class="form-input" value="${log.waketime || '05:30'}">
-        </div>
+        <input type="number" id="modal-sleep-hours" class="form-input" min="0.5" max="24" step="0.25" value="${initialHours}">
       </div>
+
       <div class="form-hint" style="margin-bottom: var(--space-4);">
-        Transformation target: 7.5 hours of restorative recovery per night.
+        Transformation target: 7.5 hours of restorative recovery per night. Adjusting Bedtime or Wake Time automatically updates total hours.
       </div>
       <button id="modal-save-sleep-btn" class="btn btn-primary btn-block">Save Sleep Record</button>
     `;
 
-    form.querySelector('#modal-save-sleep-btn').addEventListener('click', () => {
-      const hours = parseFloat(form.querySelector('#modal-sleep-hours').value);
-      const bedtime = form.querySelector('#modal-bedtime').value;
-      const waketime = form.querySelector('#modal-waketime').value;
+    const bedInput = form.querySelector('#modal-bedtime');
+    const wakeInput = form.querySelector('#modal-waketime');
+    const hoursInput = form.querySelector('#modal-sleep-hours');
+    const previewEl = form.querySelector('#sleep-calc-preview');
+    const calcBadge = form.querySelector('#sleep-calc-badge');
 
-      if (!hours || hours <= 0) return;
+    const updateFromTimes = () => {
+      const res = CalcUtils.calculateSleepDuration(bedInput.value, wakeInput.value);
+      if (res && res.hours > 0) {
+        hoursInput.value = res.hours;
+        previewEl.innerHTML = `<span>⏱️ Calculated: <strong>${res.display}</strong></span>`;
+        calcBadge.textContent = 'Auto-calculated';
+        calcBadge.className = 'badge badge-masjid';
+      } else if (res && res.hours === 0) {
+        previewEl.innerHTML = `<span>⏱️ Same bedtime & waketime (0h)</span>`;
+      }
+    };
+
+    bedInput.addEventListener('input', updateFromTimes);
+    bedInput.addEventListener('change', updateFromTimes);
+    wakeInput.addEventListener('input', updateFromTimes);
+    wakeInput.addEventListener('change', updateFromTimes);
+
+    hoursInput.addEventListener('input', () => {
+      calcBadge.textContent = 'Manual override';
+      calcBadge.className = 'badge badge-neutral';
+    });
+
+    form.querySelector('#modal-save-sleep-btn').addEventListener('click', () => {
+      const hours = parseFloat(hoursInput.value);
+      const bedtime = bedInput.value;
+      const waketime = wakeInput.value;
+
+      if (isNaN(hours) || hours <= 0) {
+        UI.showToast('Please enter a valid sleep duration', 'warning');
+        return;
+      }
 
       StorageService.saveDayLog(todayISO, {
         sleepHours: hours,
@@ -114,7 +166,7 @@ const SleepModule = {
       });
 
       UI.closeSheet();
-      UI.showToast(`Logged ${hours}h sleep`, 'success');
+      UI.showToast(`Logged ${hours}h sleep (${bedtime} – ${waketime})`, 'success');
       this.renderSleep();
       window.dispatchEvent(new CustomEvent('batman:data-updated'));
     });

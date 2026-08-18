@@ -70,6 +70,7 @@ const QuranModule = {
     const todayISO = DateUtils.getTodayISO();
     const log = StorageService.getDayLog(todayISO);
     const settings = StorageService.getSettings();
+    const surahProgress = settings.surahProgress || {};
 
     // 1. Morning Tafsir Status
     const tafsirBtn = document.getElementById('quran-tafsir-toggle-btn');
@@ -94,9 +95,10 @@ const QuranModule = {
     const todayCountEl = document.getElementById('quran-today-memo-count');
     const selectBtn = document.getElementById('quran-select-surah-btn');
 
-    const hasActiveSurah = Boolean(settings.activeSurahNumber);
-    const totalVerses = settings.activeSurahVerses || 30;
-    const completedVerses = Math.min(totalVerses, settings.activeSurahCompletedVerses || 0);
+    const activeNumber = settings.activeSurahNumber || 67;
+    const activeSurah = CONFIG.SURAHS.find(s => s.number === activeNumber) || { number: 67, name: 'Al-Mulk', verses: 30 };
+    const totalVerses = activeSurah.verses;
+    const completedVerses = Math.max(0, Math.min(totalVerses, surahProgress[activeNumber] ?? settings.activeSurahCompletedVerses ?? 0));
     const remainingVerses = Math.max(0, totalVerses - completedVerses);
     const pct = Math.round((completedVerses / totalVerses) * 100);
     const isSurahCompleted = completedVerses >= totalVerses;
@@ -105,17 +107,21 @@ const QuranModule = {
     if (surahNameEl) {
       surahNameEl.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 2px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: var(--text-lg); font-weight: 800; color: var(--text-primary);">${settings.activeSurahName || 'Al-Mulk'}</span>
-            ${isSurahCompleted ? '<span class="badge badge-masjid">COMPLETED ✓</span>' : ''}
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: var(--text-lg); font-weight: 800; color: var(--text-primary);">${activeSurah.name}</span>
+            ${isSurahCompleted ? '<span class="badge badge-masjid" style="font-size: 10px;">100% COMPLETED ✓</span>' : ''}
           </div>
-          <span style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;">${totalVerses} verses</span>
+          <span style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;">Surah ${activeSurah.number} • ${totalVerses} verses total</span>
         </div>
       `;
     }
 
     if (surahProgressTxt) {
-      surahProgressTxt.textContent = `${completedVerses} / ${totalVerses} (${pct}%) • ${remainingVerses} left`;
+      if (isSurahCompleted) {
+        surahProgressTxt.textContent = `${totalVerses} / ${totalVerses} (100%) • Completed ✓`;
+      } else {
+        surahProgressTxt.textContent = `${completedVerses} / ${totalVerses} (${pct}%) • ${remainingVerses} left`;
+      }
     }
 
     if (surahProgressBar) {
@@ -132,11 +138,8 @@ const QuranModule = {
       if (isSurahCompleted) {
         selectBtn.textContent = 'SELECT NEXT SURAH';
         selectBtn.className = 'btn btn-primary btn-sm';
-      } else if (hasActiveSurah) {
-        selectBtn.textContent = 'CHANGE SURAH';
-        selectBtn.className = 'btn btn-outline btn-sm';
       } else {
-        selectBtn.textContent = 'SELECT SURAH';
+        selectBtn.textContent = 'CHANGE SURAH';
         selectBtn.className = 'btn btn-outline btn-sm';
       }
     }
@@ -146,41 +149,75 @@ const QuranModule = {
     const todayISO = DateUtils.getTodayISO();
     const log = StorageService.getDayLog(todayISO);
     const settings = StorageService.getSettings();
+    const surahProgress = { ...(settings.surahProgress || {}) };
 
+    const activeNumber = settings.activeSurahNumber || 67;
+    const activeSurah = CONFIG.SURAHS.find(s => s.number === activeNumber) || { number: 67, name: 'Al-Mulk', verses: 30 };
+    const totalVerses = activeSurah.verses;
+    const currentCompleted = Math.max(0, Math.min(totalVerses, surahProgress[activeNumber] ?? settings.activeSurahCompletedVerses ?? 0));
     const currentToday = log.quranMemoCount || 0;
-    const nextToday = Math.max(0, currentToday + delta);
 
-    if (nextToday === currentToday) return;
-
-    // Update Surah overall progress
-    const totalVerses = settings.activeSurahVerses || 30;
-    const currentCompleted = settings.activeSurahCompletedVerses || 0;
-    const nextCompleted = Math.max(0, Math.min(totalVerses, currentCompleted + delta));
-
-    StorageService.saveDayLog(todayISO, { quranMemoCount: nextToday });
-    StorageService.saveSettings({ activeSurahCompletedVerses: nextCompleted });
-
-    UI.vibrate(10);
-    this.renderQuran();
-    window.dispatchEvent(new CustomEvent('batman:data-updated'));
-
-    // Check for Surah completion
-    if (nextCompleted >= totalVerses) {
-      setTimeout(() => {
-        UI.showToast(`Surah ${settings.activeSurahName} Completed (100%)! Choose your next Surah.`, 'success', 4500);
+    if (delta > 0) {
+      // If already at 100%, prevent increasing count and prompt for next surah
+      if (currentCompleted >= totalVerses) {
+        UI.vibrate([15, 50, 15]);
+        UI.showToast(`Surah ${activeSurah.name} is already 100% completed (${totalVerses}/${totalVerses} verses). Please select your next Surah!`, 'warning', 3500);
         this.openSurahSelectorModal();
-      }, 400);
+        return;
+      }
+
+      const nextCompleted = currentCompleted + 1;
+      const nextToday = currentToday + 1;
+      surahProgress[activeNumber] = nextCompleted;
+
+      StorageService.saveSettings({
+        activeSurahCompletedVerses: nextCompleted,
+        surahProgress
+      });
+      StorageService.saveDayLog(todayISO, { quranMemoCount: nextToday });
+
+      UI.vibrate(10);
+      this.renderQuran();
+      window.dispatchEvent(new CustomEvent('batman:data-updated'));
+
+      // Check if this tap just completed the Surah
+      if (nextCompleted >= totalVerses) {
+        setTimeout(() => {
+          UI.vibrate([20, 100, 20]);
+          UI.showToast(`🎉 Masha'Allah! Surah ${activeSurah.name} Completed (100%)! Choose your next Surah.`, 'success', 4500);
+          this.openSurahSelectorModal();
+        }, 350);
+      }
+    } else if (delta < 0) {
+      if (currentCompleted <= 0 && currentToday <= 0) return;
+
+      const nextCompleted = Math.max(0, currentCompleted - 1);
+      const nextToday = Math.max(0, currentToday - 1);
+      surahProgress[activeNumber] = nextCompleted;
+
+      StorageService.saveSettings({
+        activeSurahCompletedVerses: nextCompleted,
+        surahProgress
+      });
+      StorageService.saveDayLog(todayISO, { quranMemoCount: nextToday });
+
+      UI.vibrate(10);
+      this.renderQuran();
+      window.dispatchEvent(new CustomEvent('batman:data-updated'));
     }
   },
 
   openSurahSelectorModal() {
     const settings = StorageService.getSettings();
+    const surahProgress = settings.surahProgress || {};
+    const activeNumber = settings.activeSurahNumber || 67;
+
     const container = document.createElement('div');
 
     const searchBox = document.createElement('input');
     searchBox.type = 'text';
     searchBox.className = 'form-input';
-    searchBox.placeholder = 'Search Surah by name or number...';
+    searchBox.placeholder = 'Search Surah by name or number (e.g. Al-Kahf, 18)...';
     searchBox.style.marginBottom = 'var(--space-3)';
 
     const listEl = document.createElement('div');
@@ -193,15 +230,41 @@ const QuranModule = {
         s.number.toString().includes(q) || s.name.toLowerCase().includes(q)
       );
 
-      listEl.innerHTML = filtered.map(s => `
-        <div class="prayer-row" style="cursor: pointer; padding: 10px 0;" onclick="QuranModule.selectSurah(${s.number})">
-          <div class="prayer-info">
-            <span style="font-weight: 700; color: var(--text-primary);">${s.number}. ${s.name}</span>
-            <span class="prayer-time">${s.verses} Verses</span>
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: var(--space-4);">No Surah found matching "${filter}"</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(s => {
+        const versesDone = surahProgress[s.number] || 0;
+        const isDone = versesDone >= s.verses;
+        const isActive = s.number === activeNumber;
+        const inProgress = versesDone > 0 && !isDone;
+
+        let statusBadge = '';
+        if (isActive && isDone) {
+          statusBadge = '<span class="badge badge-masjid">Active • Done ✓</span>';
+        } else if (isActive) {
+          statusBadge = '<span class="badge badge-masjid">Active</span>';
+        } else if (isDone) {
+          statusBadge = '<span class="badge badge-success">Done ✓</span>';
+        } else if (inProgress) {
+          statusBadge = `<span class="badge badge-neutral">${versesDone}/${s.verses}</span>`;
+        }
+
+        return `
+          <div class="prayer-row" style="cursor: pointer; padding: 10px 0; border-bottom: 1px solid var(--border-subtle);" onclick="QuranModule.selectSurah(${s.number})">
+            <div class="prayer-info">
+              <span style="font-weight: 700; color: var(--text-primary);">${s.number}. ${s.name}</span>
+              <span class="prayer-time">${s.verses} Verses ${versesDone > 0 ? `(${versesDone}/${s.verses} memorized)` : ''}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              ${statusBadge}
+              <button class="btn ${isActive ? 'btn-secondary' : 'btn-outline'} btn-sm" style="min-height: 36px; padding: 0 12px;">${isActive ? 'Active' : (versesDone > 0 ? 'Resume' : 'Select')}</button>
+            </div>
           </div>
-          ${s.number === settings.activeSurahNumber ? '<span class="badge badge-masjid">Active</span>' : '<button class="btn btn-outline btn-sm">Select</button>'}
-        </div>
-      `).join('');
+        `;
+      }).join('');
     };
 
     searchBox.addEventListener('input', (e) => renderList(e.target.value));
@@ -210,22 +273,28 @@ const QuranModule = {
     container.appendChild(listEl);
     renderList();
 
-    UI.openSheet('Select Any Surah to Memorize', container);
+    UI.openSheet('Select Surah to Memorize', container);
+    setTimeout(() => { if (typeof searchBox.focus === 'function') searchBox.focus(); }, 150);
   },
 
   selectSurah(surahNumber) {
     const surah = CONFIG.SURAHS.find(s => s.number === surahNumber);
     if (!surah) return;
 
+    const settings = StorageService.getSettings();
+    const surahProgress = settings.surahProgress || {};
+    const existingProgress = Math.max(0, Math.min(surah.verses, surahProgress[surah.number] || 0));
+
     StorageService.saveSettings({
       activeSurahNumber: surah.number,
       activeSurahName: surah.name,
       activeSurahVerses: surah.verses,
-      activeSurahCompletedVerses: 0
+      activeSurahCompletedVerses: existingProgress,
+      surahProgress: { ...surahProgress, [surah.number]: existingProgress }
     });
 
     UI.closeSheet();
-    UI.showToast(`Active Surah set to: ${surah.name} (${surah.verses} verses)`, 'success');
+    UI.showToast(`Active Surah set to: ${surah.name} (${existingProgress}/${surah.verses} verses)`, 'success');
     this.renderQuran();
     window.dispatchEvent(new CustomEvent('batman:data-updated'));
   }
@@ -234,3 +303,4 @@ const QuranModule = {
 if (typeof window !== 'undefined') {
   window.QuranModule = QuranModule;
 }
+

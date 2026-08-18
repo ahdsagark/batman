@@ -3,8 +3,12 @@
  */
 
 const App = {
+  currentAppDate: '',
+
   async init() {
     console.log('[BATMAN] Initializing Personal Transformation Command Center...');
+
+    this.currentAppDate = DateUtils.getTodayISO();
 
     // 1. Initialize Storage Engine
     StorageService.init();
@@ -19,8 +23,9 @@ const App = {
     this.setupNavigation();
     this.setupHeader();
     this.setupServiceWorker();
+    this.setupDateRolloverWatcher();
 
-    // 4. Initialize Feature Modules
+    // 5. Initialize Feature Modules
     if (window.SettingsModule) SettingsModule.init();
     if (window.DashboardModule) DashboardModule.init();
     if (window.DeenModule) DeenModule.init();
@@ -34,12 +39,37 @@ const App = {
     if (window.ProgressModule) ProgressModule.init();
 
     // Set today's date in header
+    this.updateHeaderDate();
+
+    console.log('[BATMAN] Command Center ready.');
+  },
+
+  updateHeaderDate() {
     const dateEl = document.getElementById('today-date-str');
     if (dateEl) {
       dateEl.textContent = DateUtils.formatHeaderDate();
     }
+  },
 
-    console.log('[BATMAN] Command Center ready.');
+  setupDateRolloverWatcher() {
+    // Lightweight check every 30 seconds for midnight rollover
+    setInterval(() => {
+      const today = DateUtils.getTodayISO();
+      if (today !== this.currentAppDate) {
+        console.log(`[BATMAN] Midnight Rollover detected: ${this.currentAppDate} -> ${today}`);
+        this.currentAppDate = today;
+        this.updateHeaderDate();
+
+        // Refresh all day-specific calculations and displays
+        if (window.DashboardModule) DashboardModule.renderDashboard();
+        if (window.DeenModule) DeenModule.renderDeen();
+        if (window.CyberModule) CyberModule.renderCyber();
+        if (window.ProgressModule) ProgressModule.renderProgress();
+
+        window.dispatchEvent(new CustomEvent('batman:date-rolled-over', { detail: { date: today } }));
+        UI.showToast(`New day: ${DateUtils.formatHeaderDate()}`, 'info', 3500);
+      }
+    }, 30000);
   },
 
   setupNavigation() {
@@ -88,6 +118,10 @@ const App = {
     }
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.App = App;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   App.init();

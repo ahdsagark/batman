@@ -19,6 +19,7 @@ const SettingsModule = {
     const methodSelect = document.getElementById('setting-prayer-method');
     const asrSelect = document.getElementById('setting-prayer-asr-method');
     const gasUrlInput = document.getElementById('setting-gas-url');
+    const gasTokenInput = document.getElementById('setting-gas-token');
     const notifBtn = document.getElementById('btn-enable-notifs');
     const gasStatusBadge = document.getElementById('gas-connection-status');
 
@@ -30,6 +31,7 @@ const SettingsModule = {
     if (methodSelect && settings.prayerMethod) methodSelect.value = settings.prayerMethod;
     if (asrSelect && settings.prayerAsrMethod) asrSelect.value = settings.prayerAsrMethod;
     if (gasUrlInput && settings.gasWebAppUrl) gasUrlInput.value = settings.gasWebAppUrl;
+    if (gasTokenInput) gasTokenInput.value = settings.gasApiToken || 'batman-secret-2026';
 
     // Notification permission status
     if (notifBtn) {
@@ -72,7 +74,7 @@ const SettingsModule = {
   bindEvents() {
     const inputs = [
       'setting-user-name', 'setting-user-height', 'setting-current-weight', 'setting-target-weight',
-      'setting-prayer-city', 'setting-prayer-method', 'setting-prayer-asr-method', 'setting-gas-url'
+      'setting-prayer-city', 'setting-prayer-method', 'setting-prayer-asr-method', 'setting-gas-url', 'setting-gas-token'
     ];
 
     inputs.forEach(id => {
@@ -132,6 +134,7 @@ const SettingsModule = {
     if (testBtn) {
       testBtn.addEventListener('click', async () => {
         const gasUrl = document.getElementById('setting-gas-url').value.trim();
+        const gasToken = (document.getElementById('setting-gas-token') ? document.getElementById('setting-gas-token').value.trim() : 'batman-secret-2026');
         if (!gasUrl) {
           UI.showToast('Please enter an Apps Script URL first', 'error');
           return;
@@ -141,7 +144,7 @@ const SettingsModule = {
         testBtn.disabled = true;
 
         try {
-          const res = await ApiService.testConnection(gasUrl);
+          const res = await ApiService.testConnection(gasUrl, gasToken);
           if (res.success) {
             UI.showToast('Connection successful!', 'success');
             if (gasStatusBadge) {
@@ -277,7 +280,8 @@ const SettingsModule = {
       prayerCity: document.getElementById('setting-prayer-city').value,
       prayerMethod: document.getElementById('setting-prayer-method').value,
       prayerAsrMethod: document.getElementById('setting-prayer-asr-method').value,
-      gasWebAppUrl: document.getElementById('setting-gas-url').value.trim()
+      gasWebAppUrl: document.getElementById('setting-gas-url').value.trim(),
+      gasApiToken: document.getElementById('setting-gas-token') ? document.getElementById('setting-gas-token').value.trim() : 'batman-secret-2026'
     };
     StorageService.saveSettings(updated);
     UI.showToast('Settings saved', 'success', 1500);

@@ -108,12 +108,21 @@ const SyncService = {
       return;
     }
 
-    const queue = StorageService.getSyncQueue();
-    if (queue.length === 0) {
+    const queueSnapshot = StorageService.getSyncQueue();
+    if (queueSnapshot.length === 0) {
       if (showToasts) UI.showToast('All data is already synced', 'success');
       StorageService.updateSyncUI();
       return;
     }
+
+    // Capture snapshot of items being transmitted
+    const batchSnapshot = queueSnapshot.map(item => ({
+      id: item.id,
+      timestamp: item.timestamp,
+      table: item.table,
+      action: item.action,
+      data: item.data
+    }));
 
     this.isSyncing = true;
     const syncText = document.getElementById('sync-text');
@@ -124,20 +133,20 @@ const SyncService = {
     }
 
     try {
-      // Send entire batch with stable IDs for idempotent upsert
-      const result = await ApiService.syncBatch(gasUrl, queue);
+      const apiToken = settings.gasApiToken || 'batman-secret-2026';
+      // Send batch snapshot to Apps Script with API token
+      const result = await ApiService.syncBatch(gasUrl, batchSnapshot, apiToken);
 
       if (result && result.success) {
-        // Clear all synced items
-        StorageService.clearSyncQueue();
-        if (showToasts) UI.showToast(`Synced ${queue.length} record(s) to Sheets`, 'success');
+        // Atomically remove ONLY the items that were in this batch and unmodified since
+        StorageService.removeSyncedItems(batchSnapshot);
+        if (showToasts) UI.showToast(`Synced ${batchSnapshot.length} record(s) to Sheets`, 'success');
       } else {
         throw new Error(result.error || 'Sync failed');
       }
     } catch (err) {
       console.warn('[Sync] Sync failed:', err.message);
       if (showToasts) UI.showToast(`Sync error: ${err.message}`, 'error', 4000);
-      StorageService.updateSyncUI();
     } finally {
       this.isSyncing = false;
       StorageService.updateSyncUI();

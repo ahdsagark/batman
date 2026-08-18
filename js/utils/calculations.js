@@ -164,9 +164,47 @@ const CalcUtils = {
     if (!durationHours) return 0;
     const target = CONFIG.TARGETS.SLEEP_DAILY_HOURS;
     return Math.min(100, Math.round((durationHours / target) * 100));
+  },
+
+  /**
+   * Calculate sleep duration in hours from bedtime and wake time strings (HH:mm)
+   * Automatically handles crossing midnight (e.g., 22:30 to 06:00 = 7.5 hrs).
+   * @param {string} bedtimeStr 'HH:mm'
+   * @param {string} waketimeStr 'HH:mm'
+   * @returns {{ hours: number, diffMin: number, hrsPart: number, minsPart: number, display: string } | null}
+   */
+  calculateSleepDuration(bedtimeStr, waketimeStr) {
+    if (!bedtimeStr || !waketimeStr) return null;
+    const bedParts = bedtimeStr.split(':').map(Number);
+    const wakeParts = waketimeStr.split(':').map(Number);
+    if (bedParts.length < 2 || wakeParts.length < 2) return null;
+    const [bH, bM] = bedParts;
+    const [wH, wM] = wakeParts;
+    if (isNaN(bH) || isNaN(bM) || isNaN(wH) || isNaN(wM)) return null;
+
+    const bTotal = bH * 60 + bM;
+    const wTotal = wH * 60 + wM;
+
+    let diffMin = 0;
+    if (wTotal < bTotal) {
+      // Overnight sleep crossing midnight (e.g. 22:30 -> 06:00)
+      diffMin = (1440 - bTotal) + wTotal;
+    } else if (wTotal === bTotal) {
+      diffMin = 0;
+    } else {
+      diffMin = wTotal - bTotal;
+    }
+
+    const hours = Math.round((diffMin / 60) * 100) / 100;
+    const hrsPart = Math.floor(diffMin / 60);
+    const minsPart = diffMin % 60;
+    const display = `${hrsPart}h ${minsPart.toString().padStart(2, '0')}m (${hours} hrs)`;
+
+    return { hours, diffMin, hrsPart, minsPart, display };
   }
 };
 
 if (typeof window !== 'undefined') {
   window.CalcUtils = CalcUtils;
 }
+

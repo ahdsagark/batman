@@ -5,6 +5,15 @@
  * ============================================================================
  */
 
+function getApiSecret() {
+  var props = PropertiesService.getScriptProperties();
+  var secret = props ? props.getProperty("BATMAN_API_SECRET") : null;
+  if (!secret) {
+    secret = "batman-secret-2026";
+  }
+  return secret;
+}
+
 function doGet(e) {
   return handleResponse({
     success: true,
@@ -24,6 +33,12 @@ function doPost(e) {
     var payload = request.payload || {};
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
+    // 1. Request Authentication
+    var expectedToken = getApiSecret();
+    if (!request.token || request.token !== expectedToken) {
+      return handleResponse({ success: false, error: "Unauthorized: Invalid or missing API token." });
+    }
+
     if (!action) {
       return handleResponse({ success: false, error: "Action parameter is missing" });
     }
@@ -39,42 +54,36 @@ function doPost(e) {
       case "syncBatch":
         return handleSyncBatch(ss, payload.items || []);
 
-      case "savePrayer":
-        return handleSavePrayer(ss, payload);
-
-      case "saveTahajjud":
-        return handleSaveTahajjud(ss, payload);
-
-      case "saveQuranMemorization":
-        return handleSaveQuranMemo(ss, payload);
-
-      case "saveCyberSession":
-        return handleSaveCyberSession(ss, payload);
-
-      case "saveEnglishSession":
-        return handleSaveEnglishSession(ss, payload);
-
-      case "saveIELTSMock":
-        return handleSaveIELTSMock(ss, payload);
-
-      case "saveFitness":
-        return handleSaveFitness(ss, payload);
-
-      case "saveSleep":
-        return handleSaveSleep(ss, payload);
-
-      case "saveDailyReview":
-        return handleSaveDailyReview(ss, payload);
-
-      case "saveWeeklyReview":
-        return handleSaveWeeklyReview(ss, payload);
-
       default:
         return handleResponse({ success: false, error: "Unrecognized action: " + action });
     }
   } catch (err) {
     return handleResponse({ success: false, error: err.toString() });
   }
+}
+
+/**
+ * Centralized Google Sheets formula injection sanitizer
+ * Neutralizes values starting with =, +, -, @ by prefixing with a single quote (')
+ */
+function sanitizeSheetValue(val) {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "boolean" || typeof val === "number") return val;
+  var str = val.toString();
+  if (str.length > 0) {
+    var firstChar = str.charAt(0);
+    if (firstChar === '=' || firstChar === '+' || firstChar === '-' || firstChar === '@') {
+      return "'" + str;
+    }
+  }
+  return str;
+}
+
+function sanitizeRowValues(rowArray) {
+  if (!Array.isArray(rowArray)) return [];
+  return rowArray.map(function(cell) {
+    return sanitizeSheetValue(cell);
+  });
 }
 
 /**
@@ -106,6 +115,27 @@ function handleSyncBatch(ss, items) {
       ]);
     } else if (table === "Settings") {
       upsertSetting(ss, "user_settings", JSON.stringify(data));
+    } else if (table === "Goals") {
+      upsertRowById(ss, "Goals", recordId, [
+        recordId,
+        data.title || "",
+        data.pillar || "",
+        data.targetDate || "",
+        data.status || "IN_PROGRESS",
+        JSON.stringify(data.milestones || []),
+        data.updatedAt || new Date().toISOString()
+      ]);
+    } else if (table === "Routines") {
+      upsertRowById(ss, "Routines", recordId, [
+        recordId,
+        data.name || "",
+        data.time || "",
+        data.duration || 30,
+        JSON.stringify(data.days || []),
+        data.anchor || "fixed",
+        data.isActive ? "TRUE" : "FALSE",
+        data.updatedAt || new Date().toISOString()
+      ]);
     } else if (table === "WeeklyReviews") {
       upsertRowById(ss, "WeeklyReviews", recordId, [
         recordId,
@@ -234,12 +264,13 @@ function syncDayLog(ss, dayData) {
 }
 
 /**
- * Generic Idempotent Row Upsert based on Column 1 (ID)
+ * Generic Idempotent Row Upsert based on Column 1 (ID) with Sanitization
  */
 function upsertRowById(ss, sheetName, recordId, rowValues) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) return;
 
+  var sanitizedValues = sanitizeRowValues(rowValues);
   var data = sheet.getDataRange().getValues();
   var targetRowIndex = -1;
 
@@ -251,16 +282,14 @@ function upsertRowById(ss, sheetName, recordId, rowValues) {
   }
 
   if (targetRowIndex > 0) {
-    // Update existing row
-    sheet.getRange(targetRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
+    sheet.getRange(targetRowIndex, 1, 1, sanitizedValues.length).setValues([sanitizedValues]);
   } else {
-    // Append new row
-    sheet.appendRow(rowValues);
+    sheet.appendRow(sanitizedValues);
   }
 }
 
 /**
- * Upsert key-value in Settings tab
+ * Upsert key-value in Settings tab with Sanitization
  */
 function upsertSetting(ss, key, value) {
   var sheet = ss.getSheetByName("Settings");
@@ -277,10 +306,12 @@ function upsertSetting(ss, key, value) {
   }
 
   var now = new Date().toISOString();
+  var sanitizedRow = sanitizeRowValues([key, value, now]);
+
   if (rowIndex > 0) {
-    sheet.getRange(rowIndex, 1, 1, 3).setValues([[key, value, now]]);
+    sheet.getRange(rowIndex, 1, 1, 3).setValues([sanitizedRow]);
   } else {
-    sheet.appendRow([key, value, now]);
+    sheet.appendRow(sanitizedRow);
   }
 }
 

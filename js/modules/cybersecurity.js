@@ -9,12 +9,39 @@ const CyberModule = {
   sessionElapsedSeconds: 0,
 
   init() {
+    this.restoreActiveTimer();
     this.renderCyber();
     this.bindEvents();
 
     window.addEventListener('batman:tab-switched', (e) => {
       if (e.detail.tab === 'growth') this.renderCyber();
     });
+  },
+
+  restoreActiveTimer() {
+    const saved = StorageService.getActiveTimer();
+    if (!saved || saved.type !== 'CYBER') return;
+
+    if (saved.state === 'RUNNING') {
+      this.timerState = 'RUNNING';
+      this.sessionStartTimestamp = saved.startTimestamp;
+      this.sessionElapsedSeconds = Math.max(0, Math.floor((Date.now() - this.sessionStartTimestamp) / 1000));
+      
+      this.timerInterval = setInterval(() => {
+        this.sessionElapsedSeconds = Math.floor((Date.now() - this.sessionStartTimestamp) / 1000);
+        const displayEl = document.getElementById('cyber-timer-display');
+        if (displayEl) {
+          displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
+        }
+      }, 1000);
+    } else if (saved.state === 'PAUSED') {
+      this.timerState = 'PAUSED';
+      this.sessionElapsedSeconds = saved.elapsedSeconds || 0;
+      const displayEl = document.getElementById('cyber-timer-display');
+      if (displayEl) {
+        displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
+      }
+    }
   },
 
   bindEvents() {
@@ -119,7 +146,11 @@ const CyberModule = {
       `;
     }
 
-    // 3. Update Timer Controls UI
+    // 3. Update Timer Display & Controls UI
+    const displayEl = document.getElementById('cyber-timer-display');
+    if (displayEl) {
+      displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
+    }
     this.updateControlsUI();
   },
 
@@ -128,6 +159,12 @@ const CyberModule = {
 
     this.timerState = 'RUNNING';
     this.sessionStartTimestamp = Date.now() - (this.sessionElapsedSeconds * 1000);
+
+    StorageService.saveActiveTimer({
+      type: 'CYBER',
+      state: 'RUNNING',
+      startTimestamp: this.sessionStartTimestamp
+    });
 
     this.timerInterval = setInterval(() => {
       this.sessionElapsedSeconds = Math.floor((Date.now() - this.sessionStartTimestamp) / 1000);
@@ -149,6 +186,12 @@ const CyberModule = {
     this.timerInterval = null;
     this.timerState = 'PAUSED';
 
+    StorageService.saveActiveTimer({
+      type: 'CYBER',
+      state: 'PAUSED',
+      elapsedSeconds: this.sessionElapsedSeconds
+    });
+
     UI.vibrate(10);
     UI.showToast('Session paused', 'info');
     this.updateControlsUI();
@@ -160,6 +203,8 @@ const CyberModule = {
     clearInterval(this.timerInterval);
     this.timerInterval = null;
     this.timerState = 'STOPPED';
+
+    StorageService.clearActiveTimer();
 
     const recordedSeconds = this.sessionElapsedSeconds;
     this.sessionElapsedSeconds = 0;

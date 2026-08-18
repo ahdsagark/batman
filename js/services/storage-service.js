@@ -1,6 +1,6 @@
 /**
  * BATMAN — Local-First Storage Service (LocalStorage Engine)
- * Handles immediate synchronous persistence, day records, and offline sync queue.
+ * Handles immediate synchronous persistence, day records, active timers, and offline sync queue.
  */
 
 const StorageService = {
@@ -11,7 +11,25 @@ const StorageService = {
     IELTS: 'batman_ielts_records',
     GOALS: 'batman_goals',
     WEEKLY_REVIEWS: 'batman_weekly_reviews',
-    SYNC_QUEUE: 'batman_sync_queue'
+    SYNC_QUEUE: 'batman_sync_queue',
+    ACTIVE_TIMER: 'batman_active_timer'
+  },
+
+  /**
+   * Centralized safe LocalStorage write wrapper with quota exception protection
+   */
+  safeSetItem(key, value) {
+    try {
+      const payload = typeof value === 'string' ? value : JSON.stringify(value);
+      localStorage.setItem(key, payload);
+      return true;
+    } catch (err) {
+      console.error(`[StorageService] Failed to write to LocalStorage key "${key}":`, err);
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast('Storage write error. Storage quota may be full.', 'error', 4000);
+      }
+      return false;
+    }
   },
 
   /**
@@ -31,7 +49,9 @@ const StorageService = {
         activeSurahName: 'Al-Mulk',
         activeSurahVerses: 30,
         activeSurahCompletedVerses: 0,
+        surahProgress: { 67: 0 },
         gasWebAppUrl: '',
+        gasApiToken: 'batman-secret-2026',
         notificationsEnabled: true
       };
       this.saveSettings(defaultSettings);
@@ -46,19 +66,19 @@ const StorageService = {
     }
 
     if (!localStorage.getItem(this.KEYS.DAY_LOGS)) {
-      localStorage.setItem(this.KEYS.DAY_LOGS, JSON.stringify({}));
+      this.safeSetItem(this.KEYS.DAY_LOGS, {});
     }
 
     if (!localStorage.getItem(this.KEYS.IELTS)) {
-      localStorage.setItem(this.KEYS.IELTS, JSON.stringify([]));
+      this.safeSetItem(this.KEYS.IELTS, []);
     }
 
     if (!localStorage.getItem(this.KEYS.WEEKLY_REVIEWS)) {
-      localStorage.setItem(this.KEYS.WEEKLY_REVIEWS, JSON.stringify({}));
+      this.safeSetItem(this.KEYS.WEEKLY_REVIEWS, {});
     }
 
     if (!localStorage.getItem(this.KEYS.SYNC_QUEUE)) {
-      localStorage.setItem(this.KEYS.SYNC_QUEUE, JSON.stringify([]));
+      this.safeSetItem(this.KEYS.SYNC_QUEUE, []);
     }
   },
 
@@ -68,18 +88,25 @@ const StorageService = {
   getSettings() {
     try {
       const data = localStorage.getItem(this.KEYS.SETTINGS);
-      return data ? JSON.parse(data) : {};
+      const parsed = data ? JSON.parse(data) : {};
+      if (!parsed.surahProgress) {
+        parsed.surahProgress = {};
+        if (parsed.activeSurahNumber) {
+          parsed.surahProgress[parsed.activeSurahNumber] = parsed.activeSurahCompletedVerses || 0;
+        }
+      }
+      return parsed;
     } catch (e) {
       console.error('Error parsing settings:', e);
-      return {};
+      return { surahProgress: {} };
     }
   },
 
   saveSettings(settings) {
     const current = this.getSettings();
     const updated = { ...current, ...settings, updatedAt: DateUtils.getNowISO() };
-    localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(updated));
-    this.enqueueSync('Settings', 'UPDATE', updated);
+    this.safeSetItem(this.KEYS.SETTINGS, updated);
+    this.enqueueSync('Settings', 'UPDATE', { id: 'user_settings', ...updated });
     return updated;
   },
 
@@ -96,8 +123,11 @@ const StorageService = {
   },
 
   saveRoutines(routinesList) {
-    localStorage.setItem(this.KEYS.ROUTINES, JSON.stringify(routinesList));
-    this.enqueueSync('Routines', 'BATCH_UPDATE', { routines: routinesList });
+    this.safeSetItem(this.KEYS.ROUTINES, routinesList);
+    // Enqueue each routine with stable ID for cloud synchronization
+    routinesList.forEach(r => {
+      this.enqueueSync('Routines', 'UPSERT', { id: r.id, ...r });
+    });
   },
 
   // -------------------------------------------------------------
@@ -125,12 +155,12 @@ const StorageService = {
           maghrib: { status: 'NOT_COMPLETED', location: '', timestamp: null },
           isha: { status: 'NOT_COMPLETED', location: '', timestamp: null }
         },
-        tahajjud: 'MISSED', // COMPLETED | MISSED
-        quranTafsir: 'NOT_COMPLETED', // COMPLETED | NOT_COMPLETED
+        tahajjud: 'MISSED',
+        quranTafsir: 'NOT_COMPLETED',
         quranMemoCount: 0,
-        quranRecitation: 'NOT_COMPLETED', // COMPLETED | NOT_COMPLETED
-        islamicLearning: 'NOT_COMPLETED', // COMPLETED | NOT_COMPLETED
-        adcdAttended: 'NOT_ATTENDED', // ATTENDED | NOT_ATTENDED
+        quranRecitation: 'NOT_COMPLETED',
+        islamicLearning: 'NOT_COMPLETED',
+        adcdAttended: 'NOT_ATTENDED',
         cyberSeconds: 0,
         englishSeconds: 0,
         gymAttended: false,
@@ -148,7 +178,7 @@ const StorageService = {
   saveDayLog(dateStr, dayData, enqueue = true) {
     const allLogs = this.getDayLogs();
     allLogs[dateStr] = { ...allLogs[dateStr], ...dayData, date: dateStr, updatedAt: DateUtils.getNowISO() };
-    localStorage.setItem(this.KEYS.DAY_LOGS, JSON.stringify(allLogs));
+    this.safeSetItem(this.KEYS.DAY_LOGS, allLogs);
     
     if (enqueue) {
       // Generate a stable record ID for idempotent sync
@@ -183,7 +213,7 @@ const StorageService = {
       timestamp: DateUtils.getNowISO()
     };
     records.unshift(recordWithId);
-    localStorage.setItem(this.KEYS.IELTS, JSON.stringify(records));
+    this.safeSetItem(this.KEYS.IELTS, records);
     this.enqueueSync('IELTS', 'INSERT', recordWithId);
     return recordWithId;
   },
@@ -201,8 +231,10 @@ const StorageService = {
   },
 
   saveGoals(goalsList) {
-    localStorage.setItem(this.KEYS.GOALS, JSON.stringify(goalsList));
-    this.enqueueSync('Goals', 'BATCH_UPDATE', { goals: goalsList });
+    this.safeSetItem(this.KEYS.GOALS, goalsList);
+    goalsList.forEach(g => {
+      this.enqueueSync('Goals', 'UPSERT', { id: g.id, ...g });
+    });
   },
 
   // -------------------------------------------------------------
@@ -226,9 +258,29 @@ const StorageService = {
       timestamp: DateUtils.getNowISO()
     };
     reviews[weekStartDate] = reviewWithId;
-    localStorage.setItem(this.KEYS.WEEKLY_REVIEWS, JSON.stringify(reviews));
+    this.safeSetItem(this.KEYS.WEEKLY_REVIEWS, reviews);
     this.enqueueSync('WeeklyReviews', 'UPSERT', reviewWithId);
     return reviewWithId;
+  },
+
+  // -------------------------------------------------------------
+  // ACTIVE TIMER PERSISTENCE (Survives App Reboots / Process Kills)
+  // -------------------------------------------------------------
+  getActiveTimer() {
+    try {
+      const data = localStorage.getItem(this.KEYS.ACTIVE_TIMER);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  saveActiveTimer(timerState) {
+    this.safeSetItem(this.KEYS.ACTIVE_TIMER, timerState);
+  },
+
+  clearActiveTimer() {
+    localStorage.removeItem(this.KEYS.ACTIVE_TIMER);
   },
 
   // -------------------------------------------------------------
@@ -245,10 +297,14 @@ const StorageService = {
 
   enqueueSync(table, action, data) {
     const queue = this.getSyncQueue();
-    const itemId = data.id || CalcUtils.generateId('sync');
+    const itemId = data.id || (table === 'Settings' ? 'user_settings' : CalcUtils.generateId('sync'));
     
-    // Check if an item with this ID or table/date key already exists in queue to deduplicate
-    const existingIndex = queue.findIndex(q => q.id === itemId || (q.table === table && q.data.date && q.data.date === data.date));
+    // Check if an item with this ID or table/date key already exists in queue to deduplicate/coalesce
+    const existingIndex = queue.findIndex(q => 
+      q.id === itemId || 
+      (q.table === table && q.id === itemId) ||
+      (q.table === table && q.data.date && data.date && q.data.date === data.date)
+    );
     
     const queueItem = {
       id: itemId,
@@ -265,19 +321,47 @@ const StorageService = {
       queue.push(queueItem);
     }
 
-    localStorage.setItem(this.KEYS.SYNC_QUEUE, JSON.stringify(queue));
+    this.safeSetItem(this.KEYS.SYNC_QUEUE, queue);
     this.updateSyncUI();
   },
 
   removeSyncItem(itemId) {
     let queue = this.getSyncQueue();
     queue = queue.filter(item => item.id !== itemId);
-    localStorage.setItem(this.KEYS.SYNC_QUEUE, JSON.stringify(queue));
+    this.safeSetItem(this.KEYS.SYNC_QUEUE, queue);
+    this.updateSyncUI();
+  },
+
+  /**
+   * Atomically remove ONLY items that were in the synced snapshot AND have not been modified since
+   * @param {Array<{id: string, timestamp: string}>} syncedSnapshotItems
+   */
+  removeSyncedItems(syncedSnapshotItems) {
+    if (!Array.isArray(syncedSnapshotItems) || syncedSnapshotItems.length === 0) return;
+    
+    const currentQueue = this.getSyncQueue();
+    
+    // Filter out only items that were in the synced snapshot and whose current timestamp <= snapshot timestamp
+    const remainingQueue = currentQueue.filter(currentItem => {
+      const snapshotMatch = syncedSnapshotItems.find(s => s.id === currentItem.id);
+      if (!snapshotMatch) {
+        // Item was added while sync was in-flight; keep it!
+        return true;
+      }
+      // If the current item has a newer timestamp than what was sent in the batch, KEEP IT!
+      if (currentItem.timestamp && snapshotMatch.timestamp && currentItem.timestamp > snapshotMatch.timestamp) {
+        return true;
+      }
+      // Successfully synced and unmodified during sync; remove it.
+      return false;
+    });
+
+    this.safeSetItem(this.KEYS.SYNC_QUEUE, remainingQueue);
     this.updateSyncUI();
   },
 
   clearSyncQueue() {
-    localStorage.setItem(this.KEYS.SYNC_QUEUE, JSON.stringify([]));
+    this.safeSetItem(this.KEYS.SYNC_QUEUE, []);
     this.updateSyncUI();
   },
 
@@ -315,12 +399,12 @@ const StorageService = {
   importData(backupJSON) {
     try {
       const data = typeof backupJSON === 'string' ? JSON.parse(backupJSON) : backupJSON;
-      if (data.settings) localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(data.settings));
-      if (data.routines) localStorage.setItem(this.KEYS.ROUTINES, JSON.stringify(data.routines));
-      if (data.dayLogs) localStorage.setItem(this.KEYS.DAY_LOGS, JSON.stringify(data.dayLogs));
-      if (data.ielts) localStorage.setItem(this.KEYS.IELTS, JSON.stringify(data.ielts));
-      if (data.goals) localStorage.setItem(this.KEYS.GOALS, JSON.stringify(data.goals));
-      if (data.weeklyReviews) localStorage.setItem(this.KEYS.WEEKLY_REVIEWS, JSON.stringify(data.weeklyReviews));
+      if (data.settings) this.safeSetItem(this.KEYS.SETTINGS, data.settings);
+      if (data.routines) this.safeSetItem(this.KEYS.ROUTINES, data.routines);
+      if (data.dayLogs) this.safeSetItem(this.KEYS.DAY_LOGS, data.dayLogs);
+      if (data.ielts) this.safeSetItem(this.KEYS.IELTS, data.ielts);
+      if (data.goals) this.safeSetItem(this.KEYS.GOALS, data.goals);
+      if (data.weeklyReviews) this.safeSetItem(this.KEYS.WEEKLY_REVIEWS, data.weeklyReviews);
       return true;
     } catch (e) {
       console.error('Import failed:', e);
@@ -336,6 +420,7 @@ const StorageService = {
     localStorage.removeItem(this.KEYS.GOALS);
     localStorage.removeItem(this.KEYS.WEEKLY_REVIEWS);
     localStorage.removeItem(this.KEYS.SYNC_QUEUE);
+    localStorage.removeItem(this.KEYS.ACTIVE_TIMER);
   }
 };
 
