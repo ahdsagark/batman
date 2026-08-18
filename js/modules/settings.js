@@ -374,9 +374,11 @@ const SettingsModule = {
                 <span style="background: rgba(255, 255, 255, 0.06); color: #ffffff; font-family: var(--font-mono); font-weight: 700; padding: 2px 7px; border-radius: var(--radius-xs); border: 1px solid rgba(255, 255, 255, 0.08);">
                   ${DateUtils.format12Hour(r.time)}
                 </span>
-                <span style="color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 2px 7px; border-radius: var(--radius-xs); font-weight: 600;">
-                  ${r.duration || 30}m
-                </span>
+                ${r.duration && r.duration > 0 ? `
+                  <span style="color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); padding: 2px 7px; border-radius: var(--radius-xs); font-weight: 600;">
+                    ⏳ ${r.duration}m
+                  </span>
+                ` : ''}
                 <span class="badge ${r.anchor && r.anchor !== 'fixed' ? 'badge-masjid' : 'badge-neutral'}" style="font-size: 10px; padding: 2px 6px;">
                   ${formatAnchor(r.anchor)}
                 </span>
@@ -443,7 +445,7 @@ const SettingsModule = {
       id: `routine-custom-${Date.now()}`,
       name: '',
       time: '08:00',
-      duration: 30,
+      duration: null,
       days: [0, 1, 2, 3, 4, 5, 6],
       anchor: 'fixed',
       isActive: true
@@ -452,23 +454,13 @@ const SettingsModule = {
     const container = document.createElement('div');
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const activeDays = Array.isArray(routine.days) ? routine.days : [0, 1, 2, 3, 4, 5, 6];
+    const isFixed = !routine.anchor || routine.anchor === 'fixed';
 
     container.innerHTML = `
       <form id="routine-edit-form" style="display: flex; flex-direction: column; gap: var(--space-3);" onsubmit="event.preventDefault();">
         <div class="form-group">
           <label class="form-label" style="font-weight: 700;">Routine Name *</label>
           <input type="text" id="edit-routine-name" class="form-input" required placeholder="e.g. Cybersecurity Deep Work, Gym Session" value="${routine.name || ''}">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-          <div class="form-group">
-            <label class="form-label" style="font-weight: 700;">Start Time (24h)</label>
-            <input type="time" id="edit-routine-time" class="form-input" value="${routine.time || '08:00'}" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="font-weight: 700;">Duration (Mins)</label>
-            <input type="number" id="edit-routine-duration" class="form-input" min="5" max="480" step="5" value="${routine.duration || 30}" required>
-          </div>
         </div>
 
         <div class="form-group">
@@ -484,7 +476,24 @@ const SettingsModule = {
             <option value="after-fajr" ${routine.anchor === 'after-fajr' ? 'selected' : ''}>After Fajr (30 Mins After Fajr)</option>
             <option value="after-maghrib" ${routine.anchor === 'after-maghrib' ? 'selected' : ''}>After Maghrib (25 Mins After Maghrib)</option>
           </select>
-          <div class="form-hint">Prayer-anchored routines automatically adjust when calculated prayer times change.</div>
+        </div>
+
+        <!-- Start Time Input (Only shown for Fixed Clock) -->
+        <div id="group-routine-time" class="form-group" style="display: ${isFixed ? 'block' : 'none'};">
+          <label class="form-label" style="font-weight: 700;">Start Time (24h) *</label>
+          <input type="time" id="edit-routine-time" class="form-input" value="${routine.time || '08:00'}">
+        </div>
+
+        <!-- Dynamic Anchor Info Notice (Only shown when dynamic anchor selected) -->
+        <div id="group-anchor-notice" style="display: ${isFixed ? 'none' : 'block'}; background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 11.5px; color: var(--accent-primary);">
+          ⚡ <strong>Dynamic Timing Enabled</strong>: Start time is automatically calculated from daily astronomical prayer times for your selected city. No manual time entry required.
+        </div>
+
+        <!-- Duration Input (Optional) -->
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 700;">Duration in Minutes <span style="font-weight: 400; color: var(--text-muted);">(Optional)</span></label>
+          <input type="number" id="edit-routine-duration" class="form-input" min="1" max="480" step="5" placeholder="Optional (leave blank if none)" value="${routine.duration || ''}">
+          <div class="form-hint">Leave blank to display just the start time without a duration badge.</div>
         </div>
 
         <div class="form-group">
@@ -518,6 +527,17 @@ const SettingsModule = {
       </form>
     `;
 
+    // Anchor toggle: Hide/Show Start Time based on Anchor selection
+    const anchorSelect = container.querySelector('#edit-routine-anchor');
+    const timeGroup = container.querySelector('#group-routine-time');
+    const noticeGroup = container.querySelector('#group-anchor-notice');
+
+    anchorSelect.addEventListener('change', () => {
+      const isFixedNow = anchorSelect.value === 'fixed';
+      timeGroup.style.display = isFixedNow ? 'block' : 'none';
+      noticeGroup.style.display = isFixedNow ? 'none' : 'block';
+    });
+
     // Day chip toggles
     container.querySelectorAll('.day-chip-btn').forEach(chip => {
       chip.addEventListener('click', () => {
@@ -545,9 +565,39 @@ const SettingsModule = {
         return;
       }
 
-      const timeInput = container.querySelector('#edit-routine-time').value || '08:00';
-      const durationInput = parseInt(container.querySelector('#edit-routine-duration').value, 10) || 30;
       const anchorInput = container.querySelector('#edit-routine-anchor').value || 'fixed';
+      let timeInput = container.querySelector('#edit-routine-time').value;
+
+      // If dynamic anchor, compute the reference start time from prayer engine
+      if (anchorInput !== 'fixed') {
+        const prayerTimes = (typeof PrayerService !== 'undefined') ? PrayerService.getPrayerTimes(new Date()) : null;
+        if (prayerTimes) {
+          if (anchorInput === 'prayer-fajr') timeInput = prayerTimes.fajr;
+          else if (anchorInput === 'prayer-dhuhr') timeInput = prayerTimes.dhuhr;
+          else if (anchorInput === 'prayer-asr') timeInput = prayerTimes.asr;
+          else if (anchorInput === 'prayer-maghrib') timeInput = prayerTimes.maghrib;
+          else if (anchorInput === 'prayer-isha') timeInput = prayerTimes.isha;
+          else if (anchorInput === 'relative-pre-fajr') {
+            const fMins = DateUtils.parseTimeToMinutes(prayerTimes.fajr);
+            timeInput = DateUtils.minutesToHHMM(fMins - 30);
+          } else if (anchorInput === 'after-fajr') {
+            const fMins = DateUtils.parseTimeToMinutes(prayerTimes.fajr);
+            timeInput = DateUtils.minutesToHHMM(fMins + 30);
+          } else if (anchorInput === 'after-maghrib') {
+            const mMins = DateUtils.parseTimeToMinutes(prayerTimes.maghrib);
+            timeInput = DateUtils.minutesToHHMM(mMins + 25);
+          }
+        }
+        if (!timeInput) timeInput = '05:00';
+      } else {
+        if (!timeInput) timeInput = '08:00';
+      }
+
+      const durRaw = container.querySelector('#edit-routine-duration').value.trim();
+      const durationInput = (durRaw !== '' && !isNaN(parseInt(durRaw, 10)) && parseInt(durRaw, 10) > 0)
+        ? parseInt(durRaw, 10)
+        : null;
+
       const isActiveInput = container.querySelector('#edit-routine-active').checked;
 
       const selectedDays = [];

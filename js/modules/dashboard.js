@@ -169,8 +169,10 @@ const DashboardModule = {
 
       let startMins = DateUtils.parseTimeToMinutes(startTimeStr);
       if (isNaN(startMins) || startMins < 0) startMins = 0;
-      const duration = parseInt(r.duration, 10) || 30;
-      const endMins = (startMins + duration) % 1440;
+      const rawDur = (r.duration !== undefined && r.duration !== null && r.duration !== '') ? parseInt(r.duration, 10) : null;
+      const duration = (rawDur !== null && !isNaN(rawDur) && rawDur > 0) ? rawDur : null;
+      const activeWindowMins = duration !== null ? duration : 20;
+      const endMins = (startMins + activeWindowMins) % 1440;
 
       let isCompleted = false;
       let buttonText = 'COMPLETE';
@@ -271,7 +273,7 @@ const DashboardModule = {
         endMins,
         duration,
         startTimeStr: DateUtils.minutesToHHMM(startMins),
-        endTimeStr: DateUtils.minutesToHHMM(startMins + duration),
+        endTimeStr: duration !== null ? DateUtils.minutesToHHMM((startMins + duration) % 1440) : '',
         isCompleted,
         buttonText,
         buttonClass
@@ -418,7 +420,9 @@ const DashboardModule = {
     if (currentItem) {
       heroContainer.querySelector('.hero-tag').textContent = currentItem.isCompleted ? 'CURRENT (DONE ✓)' : 'ACTIVE NOW';
       heroTitle.textContent = currentItem.name;
-      heroTime.textContent = `${DateUtils.format12Hour(currentItem.startTimeStr)} – ${DateUtils.format12Hour(currentItem.endTimeStr)}`;
+      heroTime.textContent = currentItem.duration 
+        ? `${DateUtils.format12Hour(currentItem.startTimeStr)} – ${DateUtils.format12Hour(currentItem.endTimeStr)}`
+        : DateUtils.format12Hour(currentItem.startTimeStr);
 
       const lower = currentItem.name.toLowerCase();
       if (lower.includes('cyber')) {
@@ -443,7 +447,9 @@ const DashboardModule = {
     } else if (nextItem) {
       heroContainer.querySelector('.hero-tag').textContent = 'NEXT UP';
       heroTitle.textContent = nextItem.name;
-      heroTime.textContent = `${DateUtils.format12Hour(nextItem.startTimeStr)} – ${DateUtils.format12Hour(nextItem.endTimeStr)}`;
+      heroTime.textContent = nextItem.duration 
+        ? `${DateUtils.format12Hour(nextItem.startTimeStr)} – ${DateUtils.format12Hour(nextItem.endTimeStr)}`
+        : DateUtils.format12Hour(nextItem.startTimeStr);
       
       const lower = nextItem.name.toLowerCase();
       if (lower.includes('cyber')) {
@@ -502,7 +508,7 @@ const DashboardModule = {
               <span style="font-weight: 800; font-family: var(--font-mono); font-size: var(--text-sm); color: ${item.isCompleted ? 'var(--status-success)' : (isCurrent ? 'var(--accent-primary)' : 'var(--text-muted)')};">${statusSymbol}</span>
               <span style="font-size: var(--text-sm); font-weight: ${isCurrent ? '700' : '600'}; color: ${isCurrent ? 'var(--text-primary)' : (item.isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)')}; text-decoration: ${item.isCompleted ? 'line-through' : 'none'};">${item.name}</span>
             </div>
-            <span class="prayer-time" style="margin-left: 20px;">${DateUtils.format12Hour(item.startTimeStr)} – ${DateUtils.format12Hour(item.endTimeStr)}</span>
+            <span class="prayer-time" style="margin-left: 20px;">${DateUtils.format12Hour(item.startTimeStr)}${item.duration ? ` – ${DateUtils.format12Hour(item.endTimeStr)}` : ''}</span>
           </div>
           <button class="btn ${btnClass} routine-toggle-btn" 
                   data-routine-id="${item.id}">
