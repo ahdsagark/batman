@@ -10,7 +10,7 @@
   "theme_color": "#080a0e",
   "icons": [
     {
-      "src": "/assets/icons/icon.svg",
+      "src": "assets/batman-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
