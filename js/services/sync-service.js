@@ -302,7 +302,7 @@ const SyncService = {
     if (window.SleepModule && window.SleepModule.renderSleep) window.SleepModule.renderSleep();
     if (window.GoalsModule && window.GoalsModule.renderGoals) window.GoalsModule.renderGoals();
     if (window.ProgressModule && window.ProgressModule.renderProgress) window.ProgressModule.renderProgress();
-    if (window.SettingsModule && window.SettingsModule.loadSettings) window.SettingsModule.loadSettings();
+    if (window.SettingsModule && window.SettingsModule.loadSettingsToUI) window.SettingsModule.loadSettingsToUI();
     window.dispatchEvent(new CustomEvent('batman:data-updated'));
   }
 };

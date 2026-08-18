@@ -434,21 +434,27 @@ const StorageService = {
       const localIelts = this.getIELTSRecords();
       const localWeeklyReviews = this.getWeeklyReviews();
 
-      // 1. Reconcile Settings (Keep local gas url/token if already configured)
-      if (cloudData.settings && typeof cloudData.settings === 'object') {
+      // 1. Reconcile Settings
+      if (cloudData.settings && typeof cloudData.settings === 'object' && Object.keys(cloudData.settings).length > 0) {
         const mergedSettings = {
-          ...cloudData.settings,
           ...localSettings,
+          ...cloudData.settings,
           gasWebAppUrl: localSettings.gasWebAppUrl || cloudData.settings.gasWebAppUrl || '',
           gasApiToken: localSettings.gasApiToken || cloudData.settings.gasApiToken || 'batman-secret-2026'
         };
-        // If cloud had surah progress, merge it
+
+        const mergedSurahProgress = {
+          ...(cloudData.settings.surahProgress || {}),
+          ...(localSettings.surahProgress || {})
+        };
         if (cloudData.settings.surahProgress) {
-          mergedSettings.surahProgress = {
-            ...(cloudData.settings.surahProgress || {}),
-            ...(localSettings.surahProgress || {})
-          };
+          Object.keys(cloudData.settings.surahProgress).forEach(sNum => {
+            const cVal = parseInt(cloudData.settings.surahProgress[sNum], 10) || 0;
+            const lVal = parseInt(mergedSurahProgress[sNum], 10) || 0;
+            mergedSurahProgress[sNum] = Math.max(cVal, lVal);
+          });
         }
+        mergedSettings.surahProgress = mergedSurahProgress;
         this.safeSetItem(this.KEYS.SETTINGS, mergedSettings);
       }
 
@@ -462,29 +468,47 @@ const StorageService = {
           if (!localDay) {
             mergedDayLogs[dateStr] = cloudDay;
           } else {
-            // Merge day-level fields
+            // Intelligent prayer merging: prefer COMPLETED
+            const mergedPrayers = {};
+            const pNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+            pNames.forEach(pName => {
+              const cP = (cloudDay.prayers && cloudDay.prayers[pName]) || {};
+              const lP = (localDay.prayers && localDay.prayers[pName]) || {};
+
+              if (cP.status === 'COMPLETED' || lP.status === 'COMPLETED') {
+                const winner = (cP.status === 'COMPLETED' && cP.location) ? cP : (lP.status === 'COMPLETED' ? lP : cP);
+                mergedPrayers[pName] = {
+                  status: 'COMPLETED',
+                  location: winner.location || 'HOME',
+                  timestamp: winner.timestamp || DateUtils.getNowISO()
+                };
+              } else {
+                mergedPrayers[pName] = {
+                  status: 'NOT_COMPLETED',
+                  location: '',
+                  timestamp: null
+                };
+              }
+            });
+
             mergedDayLogs[dateStr] = {
-              ...cloudDay,
-              ...localDay,
-              prayers: {
-                ...(cloudDay.prayers || {}),
-                ...(localDay.prayers || {})
-              },
-              tahajjud: (localDay.tahajjud && localDay.tahajjud !== 'MISSED') ? localDay.tahajjud : (cloudDay.tahajjud || 'MISSED'),
-              quranTafsir: (localDay.quranTafsir === 'COMPLETED') ? 'COMPLETED' : (cloudDay.quranTafsir || 'NOT_COMPLETED'),
-              quranRecitation: (localDay.quranRecitation === 'COMPLETED') ? 'COMPLETED' : (cloudDay.quranRecitation || 'NOT_COMPLETED'),
+              date: dateStr,
+              prayers: mergedPrayers,
+              tahajjud: (cloudDay.tahajjud === 'COMPLETED' || localDay.tahajjud === 'COMPLETED') ? 'COMPLETED' : (cloudDay.tahajjud || localDay.tahajjud || 'MISSED'),
+              quranTafsir: (cloudDay.quranTafsir === 'COMPLETED' || localDay.quranTafsir === 'COMPLETED') ? 'COMPLETED' : 'NOT_COMPLETED',
+              quranRecitation: (cloudDay.quranRecitation === 'COMPLETED' || localDay.quranRecitation === 'COMPLETED') ? 'COMPLETED' : 'NOT_COMPLETED',
               quranMemoCount: Math.max(localDay.quranMemoCount || 0, cloudDay.quranMemoCount || 0),
-              islamicLearning: (localDay.islamicLearning === 'COMPLETED') ? 'COMPLETED' : (cloudDay.islamicLearning || 'NOT_COMPLETED'),
-              adcdAttended: (localDay.adcdAttended && localDay.adcdAttended !== 'NOT_ATTENDED') ? localDay.adcdAttended : (cloudDay.adcdAttended || 'NOT_ATTENDED'),
+              islamicLearning: (cloudDay.islamicLearning === 'COMPLETED' || localDay.islamicLearning === 'COMPLETED') ? 'COMPLETED' : 'NOT_COMPLETED',
+              adcdAttended: (cloudDay.adcdAttended && cloudDay.adcdAttended !== 'NOT_ATTENDED') ? cloudDay.adcdAttended : (localDay.adcdAttended || 'NOT_ATTENDED'),
               cyberSeconds: Math.max(localDay.cyberSeconds || 0, cloudDay.cyberSeconds || 0),
               englishSeconds: Math.max(localDay.englishSeconds || 0, cloudDay.englishSeconds || 0),
-              gymAttended: (localDay.gymAttended || cloudDay.gymAttended),
-              weightKg: localDay.weightKg || cloudDay.weightKg || null,
-              bmi: localDay.bmi || cloudDay.bmi || null,
-              sleepHours: localDay.sleepHours || cloudDay.sleepHours || null,
-              bedtime: localDay.bedtime || cloudDay.bedtime || '',
-              waketime: localDay.waketime || cloudDay.waketime || '',
-              review: localDay.review || cloudDay.review || null
+              gymAttended: Boolean(cloudDay.gymAttended || localDay.gymAttended),
+              weightKg: cloudDay.weightKg || localDay.weightKg || null,
+              bmi: cloudDay.bmi || localDay.bmi || null,
+              sleepHours: cloudDay.sleepHours || localDay.sleepHours || null,
+              bedtime: cloudDay.bedtime || localDay.bedtime || '',
+              waketime: cloudDay.waketime || localDay.waketime || '',
+              review: cloudDay.review || localDay.review || null
             };
           }
         });

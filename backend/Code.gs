@@ -267,6 +267,48 @@ function syncDayLog(ss, dayData) {
       now
     ]);
   }
+
+  // 8. Cyber Deep Work Duration
+  if (dayData.cyberSeconds !== undefined && dayData.cyberSeconds !== null) {
+    var cyberId = "cyber-" + dateStr;
+    upsertRowById(ss, "CyberSessions", cyberId, [
+      cyberId,
+      dateStr,
+      "",
+      "",
+      dayData.cyberSeconds,
+      now
+    ]);
+  }
+
+  // 9. English Practice Duration
+  if (dayData.englishSeconds !== undefined && dayData.englishSeconds !== null) {
+    var engId = "english-" + dateStr;
+    upsertRowById(ss, "EnglishSessions", engId, [
+      engId,
+      dateStr,
+      "",
+      "",
+      dayData.englishSeconds,
+      now
+    ]);
+  }
+
+  // 10. Quran Memorization Count
+  if (dayData.quranMemoCount !== undefined && dayData.quranMemoCount !== null) {
+    var memoId = "memo-" + dateStr;
+    upsertRowById(ss, "QuranMemorization", memoId, [
+      memoId,
+      "",
+      "",
+      "",
+      "",
+      dayData.quranMemoCount,
+      "LOGGED",
+      dateStr,
+      now
+    ]);
+  }
 }
 
 // In-memory sheet and row cache for high-performance batch processing
