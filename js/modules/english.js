@@ -123,77 +123,26 @@ const EnglishModule = {
     if (statWeek) statWeek.textContent = `${(weeklySecs / 3600).toFixed(1)}h`;
     if (statStreak) statStreak.textContent = `${streak}d`;
 
-    // 5. Render IELTS Mock Scoreboard
+    // 5. Render IELTS Mock List
     const historyContainer = document.getElementById('ielts-history-container');
     if (historyContainer) {
       const mocks = StorageService.getIELTSRecords();
       if (!mocks || mocks.length === 0) {
         historyContainer.innerHTML = `
-          <div style="text-align: center; padding: var(--space-4) var(--space-2); background: rgba(0,0,0,0.15); border-radius: var(--radius-md); border: 1px dashed var(--border-medium);">
-            <div style="font-size: 1.8rem; margin-bottom: var(--space-1);">🎯</div>
-            <div style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">No Mock Exams Recorded</div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: var(--space-3);">Take Cambridge IELTS mock tests and record your 4-module band scores here.</div>
-            <button class="btn btn-outline btn-sm" onclick="EnglishModule.openIELTSModal()" style="font-weight: 700; min-height: 36px;">+ Record First Mock Test</button>
+          <div style="font-size: var(--text-xs); color: var(--text-muted); padding: var(--space-2) 0;">
+            No mock tests recorded yet. Tap '+ Log Mock' to record scores.
           </div>
         `;
       } else {
-        const latest = mocks[0];
-        const isTargetMet = parseFloat(latest.overall) >= 7.5;
-        
-        let historyHTML = `
-          <!-- Latest Mock Hero Banner -->
-          <div style="background: linear-gradient(135deg, var(--bg-surface), var(--bg-surface-elevated)); border: 1px solid var(--border-medium); border-radius: var(--radius-md); padding: 14px; margin-bottom: var(--space-3); box-shadow: var(--shadow-sm);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">LATEST MOCK EXAM (${latest.date})</span>
-              <span class="badge ${isTargetMet ? 'badge-masjid' : 'badge-home'}" style="font-size: 12px; font-weight: 800; padding: 4px 10px;">
-                OVERALL ${latest.overall} ${isTargetMet ? '✓' : ''}
-              </span>
+        historyContainer.innerHTML = mocks.slice(0, 5).map(m => `
+          <div class="prayer-row" style="padding: 8px 0;">
+            <div class="prayer-info">
+              <span style="font-weight: 700; color: var(--text-primary);">Overall ${m.overall}</span>
+              <span class="prayer-time">L: ${m.listening} | R: ${m.reading} | W: ${m.writing} | S: ${m.speaking}</span>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center;">
-              <div style="background: rgba(0,0,0,0.25); padding: 8px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-                <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">🎧 LISTEN</div>
-                <div style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-mono); color: ${parseFloat(latest.listening) >= 7.0 ? 'var(--status-success)' : 'var(--text-primary)'};">${latest.listening}</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.25); padding: 8px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-                <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">📖 READ</div>
-                <div style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-mono); color: ${parseFloat(latest.reading) >= 7.0 ? 'var(--status-success)' : 'var(--text-primary)'};">${latest.reading}</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.25); padding: 8px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-                <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">✍️ WRITE</div>
-                <div style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-mono); color: ${parseFloat(latest.writing) >= 7.0 ? 'var(--status-success)' : 'var(--text-primary)'};">${latest.writing}</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.25); padding: 8px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-                <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">🗣️ SPEAK</div>
-                <div style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-mono); color: ${parseFloat(latest.speaking) >= 7.0 ? 'var(--status-success)' : 'var(--text-primary)'};">${latest.speaking}</div>
-              </div>
-            </div>
+            <span class="prayer-time">${m.date}</span>
           </div>
-        `;
-
-        if (mocks.length > 1) {
-          historyHTML += `
-            <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: var(--space-3) 0 var(--space-2) 0;">
-              Past Test History
-            </div>
-            ${mocks.slice(1, 5).map(m => `
-              <div class="prayer-row" style="padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
-                <div class="prayer-info">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="badge ${parseFloat(m.overall) >= 7.5 ? 'badge-masjid' : 'badge-home'}" style="font-size: 11px; font-weight: 800;">
-                      Band ${m.overall}
-                    </span>
-                    <span class="prayer-time" style="font-size: 11px;">${m.date}</span>
-                  </div>
-                  <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); margin-top: 4px;">
-                    L: <strong style="color: var(--text-primary);">${m.listening}</strong> • R: <strong style="color: var(--text-primary);">${m.reading}</strong> • W: <strong style="color: var(--text-primary);">${m.writing}</strong> • S: <strong style="color: var(--text-primary);">${m.speaking}</strong>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          `;
-        }
-
-        historyContainer.innerHTML = historyHTML;
+        `).join('');
       }
     }
 

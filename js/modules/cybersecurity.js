@@ -91,29 +91,29 @@ const CyberModule = {
     if (adcdContainer) {
       if (isWeekend) {
         adcdContainer.innerHTML = `
-          <div style="background-color: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+          <div class="prayer-row" style="margin-bottom: var(--space-3);">
             <div class="prayer-info">
-              <div style="font-weight: 700; font-size: var(--text-sm); color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-                <span>🎓 ADCD Offensive Security Class</span>
-              </div>
-              <span class="prayer-time" style="margin-top: 2px;">No live class scheduled today (Weekend)</span>
+              <span class="prayer-name">ADCD Class (09:30 – 11:30 AM)</span>
+              <span class="prayer-time">No class today (Weekend)</span>
             </div>
-            <span class="badge badge-neutral" style="font-weight: 700; font-size: 11px;">WEEKEND OFF</span>
+            <div class="prayer-actions">
+              <span class="badge badge-neutral">OFF</span>
+            </div>
           </div>
         `;
       } else {
         const isAttended = log.adcdAttended === 'ATTENDED';
         adcdContainer.innerHTML = `
-          <div style="background-color: var(--bg-surface-elevated); border: 1px solid var(--border-medium); border-left: 3px solid ${isAttended ? 'var(--status-success)' : 'var(--accent-primary)'}; border-radius: 0 var(--radius-md) var(--radius-md) 0; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+          <div class="prayer-row" style="margin-bottom: var(--space-3);">
             <div class="prayer-info">
-              <div style="font-weight: 700; font-size: var(--text-sm); color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                <span>🎓 ADCD Offensive Security Class</span>
-              </div>
-              <span class="prayer-time" style="margin-top: 2px; color: var(--text-secondary);">Mon – Fri • 09:30 AM – 11:30 AM (2.0h Live)</span>
+              <span class="prayer-name">ADCD Class (09:30 – 11:30 AM)</span>
+              <span id="adcd-status-desc" class="prayer-time">Mon – Fri Attendance</span>
             </div>
-            <button id="adcd-toggle-btn" class="btn ${isAttended ? 'btn-success' : 'btn-secondary'} btn-sm" style="min-height: 42px; min-width: 125px; font-weight: 800; font-size: 11px;">
-              ${isAttended ? 'ATTENDED ✓' : 'NOT ATTENDED'}
-            </button>
+            <div class="prayer-actions">
+              <button id="adcd-toggle-btn" class="btn ${isAttended ? 'btn-success' : 'btn-secondary'} btn-sm" style="min-height: 44px; min-width: 125px; font-weight: 700;">
+                ${isAttended ? 'ATTENDED ✓' : 'NOT ATTENDED'}
+              </button>
+            </div>
           </div>
         `;
         const btn = document.getElementById('adcd-toggle-btn');
