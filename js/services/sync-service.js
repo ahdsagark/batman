@@ -61,29 +61,28 @@ const SyncService = {
       }
     }, 30000);
 
-    // 6. Initial app boot sync check (1.5s delay)
-    setTimeout(() => {
-      if (navigator.onLine && !this.isSyncing) {
+    // 6. Initial app boot sync check (1.2s delay): push pending, then pull latest cloud state
+    setTimeout(async () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine && !this.isSyncing) {
         const queue = StorageService.getSyncQueue();
         if (queue.length > 0) {
-          this.syncNow(false);
-        } else {
-          StorageService.updateSyncUI();
+          await this.syncNow(false);
         }
+        await this.pullFromCloud(false);
       } else {
         StorageService.updateSyncUI();
       }
-    }, 1500);
+    }, 1200);
   },
 
   scheduleDebouncedSync(delayMs = 2000) {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => {
+    this.debounceTimer = setTimeout(async () => {
       const settings = StorageService.getSettings();
       if (settings.gasWebAppUrl && navigator.onLine && !this.isSyncing) {
         const queue = StorageService.getSyncQueue();
         if (queue.length > 0) {
-          this.syncNow(false);
+          await this.syncNow(false);
         }
       }
     }, delayMs);
@@ -119,9 +118,12 @@ const SyncService = {
             <span>Google Apps Script URL is not set. You can set it in <strong>More &gt; Google Apps Script Sync</strong>.</span>
           </div>
         ` : ''}
-        <div style="display: flex; gap: var(--space-3); margin-top: var(--space-3);">
+        <div style="display: flex; gap: var(--space-2); margin-top: var(--space-3);">
           <button id="modal-sync-now-btn" class="btn btn-primary" style="flex: 1; min-height: 44px;" ${this.isSyncing ? 'disabled' : ''}>
-            ${this.isSyncing ? 'SYNCING...' : 'SYNC NOW'}
+            ${this.isSyncing ? 'SYNCING...' : 'SYNC NOW (PUSH)'}
+          </button>
+          <button id="modal-pull-now-btn" class="btn btn-outline" style="flex: 1; min-height: 44px;" ${this.isSyncing ? 'disabled' : ''}>
+            PULL FROM CLOUD
           </button>
         </div>
       </div>
@@ -135,6 +137,15 @@ const SyncService = {
         btn.addEventListener('click', async () => {
           UI.closeBottomSheet();
           await this.syncNow(true);
+          await this.pullFromCloud(false);
+        });
+      }
+
+      const pullBtn = document.getElementById('modal-pull-now-btn');
+      if (pullBtn) {
+        pullBtn.addEventListener('click', async () => {
+          UI.closeBottomSheet();
+          await this.pullFromCloud(true);
         });
       }
     }, 50);
@@ -227,6 +238,72 @@ const SyncService = {
       this.isSyncing = false;
       StorageService.updateSyncUI();
     }
+  },
+
+  /**
+   * Pull complete consolidated database from Google Sheets to hydrate current device
+   * @param {boolean} [showToasts=false]
+   */
+  async pullFromCloud(showToasts = false) {
+    if (this.isSyncing) return;
+
+    const settings = StorageService.getSettings();
+    const gasUrl = settings.gasWebAppUrl;
+
+    if (!gasUrl) {
+      if (showToasts) UI.showToast('Configure Google Apps Script URL in More tab first', 'info', 3500);
+      return;
+    }
+
+    if (!navigator.onLine) {
+      if (showToasts) UI.showToast('Device is offline', 'info');
+      this.updateOfflineUI();
+      return;
+    }
+
+    this.isSyncing = true;
+    const syncText = document.getElementById('sync-text');
+    const syncIndicator = document.getElementById('sync-status');
+    if (syncIndicator) syncIndicator.className = 'sync-indicator syncing';
+    if (syncText) syncText.textContent = 'Updating...';
+
+    try {
+      const apiToken = settings.gasApiToken || 'batman-secret-2026';
+      const result = await ApiService.pullAllData(gasUrl, apiToken);
+
+      if (result && result.success && result.data) {
+        const hydrated = StorageService.hydrateFromCloud(result.data);
+        if (hydrated) {
+          this.refreshAllModules();
+          if (showToasts) UI.showToast('Refreshed data from Google Sheets ✓', 'success', 3000);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to pull cloud data');
+      }
+    } catch (err) {
+      console.warn('[Sync] Pull from cloud failed:', err.message);
+      if (showToasts) UI.showToast(`Pull error: ${err.message}`, 'error', 4500);
+    } finally {
+      this.isSyncing = false;
+      StorageService.updateSyncUI();
+    }
+  },
+
+  /**
+   * Re-render all views and modules after cloud data hydration
+   */
+  refreshAllModules() {
+    if (window.DashboardModule && window.DashboardModule.renderDashboard) window.DashboardModule.renderDashboard();
+    if (window.DeenModule && window.DeenModule.renderDeen) window.DeenModule.renderDeen();
+    if (window.QuranModule && window.QuranModule.renderQuran) window.QuranModule.renderQuran();
+    if (window.CyberModule && window.CyberModule.renderCyber) window.CyberModule.renderCyber();
+    if (window.EnglishModule && window.EnglishModule.renderEnglish) window.EnglishModule.renderEnglish();
+    if (window.FitnessModule && window.FitnessModule.renderFitness) window.FitnessModule.renderFitness();
+    if (window.SleepModule && window.SleepModule.renderSleep) window.SleepModule.renderSleep();
+    if (window.GoalsModule && window.GoalsModule.renderGoals) window.GoalsModule.renderGoals();
+    if (window.ProgressModule && window.ProgressModule.renderProgress) window.ProgressModule.renderProgress();
+    if (window.SettingsModule && window.SettingsModule.loadSettings) window.SettingsModule.loadSettings();
+    window.dispatchEvent(new CustomEvent('batman:data-updated'));
   }
 };
 

@@ -615,9 +615,10 @@
             <input type="password" id="setting-gas-token" class="form-input" value="batman-secret-2026" placeholder="Enter API secret token">
             <div class="form-hint">Matches BATMAN_API_SECRET in Google Apps Script properties.</div>
           </div>
-          <div style="display: flex; gap: var(--space-3);">
-            <button id="btn-test-gas-connection" class="btn btn-secondary btn-sm" style="flex: 1;">Test Connection</button>
-            <button id="btn-force-sync" class="btn btn-primary btn-sm" style="flex: 1;">Sync Now</button>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2);">
+            <button id="btn-test-gas-connection" class="btn btn-secondary btn-sm">Test</button>
+            <button id="btn-force-sync" class="btn btn-primary btn-sm">Push Sync</button>
+            <button id="btn-pull-cloud" class="btn btn-outline btn-sm">Pull Cloud</button>
           </div>
         </div>
 

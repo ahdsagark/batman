@@ -417,6 +417,135 @@ const StorageService = {
     }
   },
 
+  /**
+   * Intelligently reconcile and merge cloud data into LocalStorage
+   * Preserves connection configuration (URL, token) while updating all pillar logs.
+   * @param {object} cloudData 
+   * @returns {boolean}
+   */
+  hydrateFromCloud(cloudData) {
+    if (!cloudData || typeof cloudData !== 'object') return false;
+
+    try {
+      const localSettings = this.getSettings();
+      const localDayLogs = this.getDayLogs();
+      const localRoutines = this.getRoutines();
+      const localGoals = this.getGoals();
+      const localIelts = this.getIELTSRecords();
+      const localWeeklyReviews = this.getWeeklyReviews();
+
+      // 1. Reconcile Settings (Keep local gas url/token if already configured)
+      if (cloudData.settings && typeof cloudData.settings === 'object') {
+        const mergedSettings = {
+          ...cloudData.settings,
+          ...localSettings,
+          gasWebAppUrl: localSettings.gasWebAppUrl || cloudData.settings.gasWebAppUrl || '',
+          gasApiToken: localSettings.gasApiToken || cloudData.settings.gasApiToken || 'batman-secret-2026'
+        };
+        // If cloud had surah progress, merge it
+        if (cloudData.settings.surahProgress) {
+          mergedSettings.surahProgress = {
+            ...(cloudData.settings.surahProgress || {}),
+            ...(localSettings.surahProgress || {})
+          };
+        }
+        this.safeSetItem(this.KEYS.SETTINGS, mergedSettings);
+      }
+
+      // 2. Reconcile DayLogs
+      if (cloudData.dayLogs && typeof cloudData.dayLogs === 'object') {
+        const mergedDayLogs = { ...localDayLogs };
+        Object.keys(cloudData.dayLogs).forEach(dateStr => {
+          const cloudDay = cloudData.dayLogs[dateStr];
+          const localDay = localDayLogs[dateStr];
+
+          if (!localDay) {
+            mergedDayLogs[dateStr] = cloudDay;
+          } else {
+            // Merge day-level fields
+            mergedDayLogs[dateStr] = {
+              ...cloudDay,
+              ...localDay,
+              prayers: {
+                ...(cloudDay.prayers || {}),
+                ...(localDay.prayers || {})
+              },
+              tahajjud: (localDay.tahajjud && localDay.tahajjud !== 'MISSED') ? localDay.tahajjud : (cloudDay.tahajjud || 'MISSED'),
+              quranTafsir: (localDay.quranTafsir === 'COMPLETED') ? 'COMPLETED' : (cloudDay.quranTafsir || 'NOT_COMPLETED'),
+              quranRecitation: (localDay.quranRecitation === 'COMPLETED') ? 'COMPLETED' : (cloudDay.quranRecitation || 'NOT_COMPLETED'),
+              quranMemoCount: Math.max(localDay.quranMemoCount || 0, cloudDay.quranMemoCount || 0),
+              islamicLearning: (localDay.islamicLearning === 'COMPLETED') ? 'COMPLETED' : (cloudDay.islamicLearning || 'NOT_COMPLETED'),
+              adcdAttended: (localDay.adcdAttended && localDay.adcdAttended !== 'NOT_ATTENDED') ? localDay.adcdAttended : (cloudDay.adcdAttended || 'NOT_ATTENDED'),
+              cyberSeconds: Math.max(localDay.cyberSeconds || 0, cloudDay.cyberSeconds || 0),
+              englishSeconds: Math.max(localDay.englishSeconds || 0, cloudDay.englishSeconds || 0),
+              gymAttended: (localDay.gymAttended || cloudDay.gymAttended),
+              weightKg: localDay.weightKg || cloudDay.weightKg || null,
+              bmi: localDay.bmi || cloudDay.bmi || null,
+              sleepHours: localDay.sleepHours || cloudDay.sleepHours || null,
+              bedtime: localDay.bedtime || cloudDay.bedtime || '',
+              waketime: localDay.waketime || cloudDay.waketime || '',
+              review: localDay.review || cloudDay.review || null
+            };
+          }
+        });
+        this.safeSetItem(this.KEYS.DAY_LOGS, mergedDayLogs);
+      }
+
+      // 3. Reconcile IELTS
+      if (Array.isArray(cloudData.ielts) && cloudData.ielts.length > 0) {
+        const mergedIelts = [...localIelts];
+        cloudData.ielts.forEach(cItem => {
+          if (!mergedIelts.some(lItem => lItem.id === cItem.id || (lItem.date === cItem.date && lItem.overall === cItem.overall))) {
+            mergedIelts.push(cItem);
+          }
+        });
+        this.safeSetItem(this.KEYS.IELTS, mergedIelts);
+      }
+
+      // 4. Reconcile Goals
+      if (Array.isArray(cloudData.goals) && cloudData.goals.length > 0) {
+        const mergedGoals = [...localGoals];
+        cloudData.goals.forEach(cGoal => {
+          const idx = mergedGoals.findIndex(g => g.id === cGoal.id);
+          if (idx >= 0) {
+            mergedGoals[idx] = { ...mergedGoals[idx], ...cGoal };
+          } else {
+            mergedGoals.push(cGoal);
+          }
+        });
+        this.safeSetItem(this.KEYS.GOALS, mergedGoals);
+      }
+
+      // 5. Reconcile Routines
+      if (Array.isArray(cloudData.routines) && cloudData.routines.length > 0) {
+        const mergedRoutines = [...localRoutines];
+        cloudData.routines.forEach(cRoutine => {
+          const idx = mergedRoutines.findIndex(r => r.id === cRoutine.id);
+          if (idx >= 0) {
+            mergedRoutines[idx] = { ...mergedRoutines[idx], ...cRoutine };
+          } else {
+            mergedRoutines.push(cRoutine);
+          }
+        });
+        this.safeSetItem(this.KEYS.ROUTINES, mergedRoutines);
+      }
+
+      // 6. Reconcile Weekly Reviews
+      if (cloudData.weeklyReviews && typeof cloudData.weeklyReviews === 'object') {
+        const mergedWeekly = {
+          ...cloudData.weeklyReviews,
+          ...localWeeklyReviews
+        };
+        this.safeSetItem(this.KEYS.WEEKLY_REVIEWS, mergedWeekly);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('[StorageService] Failed to hydrate from cloud:', err);
+      return false;
+    }
+  },
+
   clearAllData() {
     localStorage.removeItem(this.KEYS.SETTINGS);
     localStorage.removeItem(this.KEYS.ROUTINES);

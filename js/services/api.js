@@ -78,6 +78,15 @@ const ApiService = {
    */
   async syncBatch(endpointUrl, items, apiToken = 'batman-secret-2026') {
     return this.request(endpointUrl, 'syncBatch', { items }, 45000, apiToken);
+  },
+
+  /**
+   * Pull complete consolidated database from Google Apps Script Web App for hydration
+   * @param {string} endpointUrl 
+   * @param {string} [apiToken='batman-secret-2026']
+   */
+  async pullAllData(endpointUrl, apiToken = 'batman-secret-2026') {
+    return this.request(endpointUrl, 'pullAllData', {}, 45000, apiToken);
   }
 };
 

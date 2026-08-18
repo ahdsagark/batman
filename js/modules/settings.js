@@ -172,12 +172,22 @@ const SettingsModule = {
       });
     }
 
-    // Force Sync
+    // Force Push Sync
     const syncBtn = document.getElementById('btn-force-sync');
     if (syncBtn) {
-      syncBtn.addEventListener('click', () => {
+      syncBtn.addEventListener('click', async () => {
         this.saveFromUI();
-        SyncService.syncNow(true);
+        await SyncService.syncNow(true);
+        await SyncService.pullFromCloud(false);
+      });
+    }
+
+    // Pull from Cloud
+    const pullBtn = document.getElementById('btn-pull-cloud');
+    if (pullBtn) {
+      pullBtn.addEventListener('click', async () => {
+        this.saveFromUI();
+        await SyncService.pullFromCloud(true);
       });
     }
 

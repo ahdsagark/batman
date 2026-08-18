@@ -54,6 +54,9 @@ function doPost(e) {
       case "syncBatch":
         return handleSyncBatch(ss, payload.items || []);
 
+      case "pullAllData":
+        return handlePullAllData(ss);
+
       default:
         return handleResponse({ success: false, error: "Unrecognized action: " + action });
     }
@@ -332,4 +335,324 @@ function handleResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Consolidated Database Export for multi-device synchronization & hydration
+ */
+function handlePullAllData(ss) {
+  var data = {
+    settings: {},
+    dayLogs: {},
+    ielts: [],
+    goals: [],
+    routines: [],
+    weeklyReviews: {},
+    exportedAt: new Date().toISOString()
+  };
+
+  // 1. Settings
+  var settingsSheet = ss.getSheetByName("Settings");
+  if (settingsSheet) {
+    var settingsData = settingsSheet.getDataRange().getValues();
+    for (var i = 1; i < settingsData.length; i++) {
+      var key = settingsData[i][0];
+      var val = settingsData[i][1];
+      if (key === "user_settings" && val) {
+        try {
+          data.settings = JSON.parse(val);
+        } catch(e) {}
+      } else if (key) {
+        data.settings[key] = val;
+      }
+    }
+  }
+
+  // 2. Routines
+  var routinesSheet = ss.getSheetByName("Routines");
+  if (routinesSheet) {
+    var routinesData = routinesSheet.getDataRange().getValues();
+    for (var i = 1; i < routinesData.length; i++) {
+      var row = routinesData[i];
+      if (!row[0]) continue;
+      var daysArr = [];
+      try { daysArr = JSON.parse(row[4] || "[]"); } catch(e) {}
+      data.routines.push({
+        id: row[0],
+        name: row[1] || "",
+        time: row[2] || "",
+        duration: row[3] || 30,
+        days: daysArr,
+        anchor: row[5] || "fixed",
+        isActive: row[6] === "TRUE" || row[6] === true,
+        updatedAt: row[7] || ""
+      });
+    }
+  }
+
+  // Helper to ensure dayLogs entry exists
+  function getDayLog(dateStr) {
+    if (!data.dayLogs[dateStr]) {
+      data.dayLogs[dateStr] = {
+        date: dateStr,
+        prayers: {
+          fajr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
+          dhuhr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
+          asr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
+          maghrib: { status: 'NOT_COMPLETED', location: '', timestamp: null },
+          isha: { status: 'NOT_COMPLETED', location: '', timestamp: null }
+        },
+        tahajjud: 'MISSED',
+        quranTafsir: 'NOT_COMPLETED',
+        quranMemoCount: 0,
+        quranRecitation: 'NOT_COMPLETED',
+        islamicLearning: 'NOT_COMPLETED',
+        adcdAttended: 'NOT_ATTENDED',
+        cyberSeconds: 0,
+        englishSeconds: 0,
+        gymAttended: false,
+        weightKg: null,
+        bmi: null,
+        sleepHours: null,
+        review: null,
+        updatedAt: ""
+      };
+    }
+    return data.dayLogs[dateStr];
+  }
+
+  // 3. Prayer Records
+  var prayerSheet = ss.getSheetByName("PrayerRecords");
+  if (prayerSheet) {
+    var prayerData = prayerSheet.getDataRange().getValues();
+    for (var i = 1; i < prayerData.length; i++) {
+      var row = prayerData[i];
+      var d = row[1];
+      var pName = row[2];
+      if (d && pName) {
+        var day = getDayLog(d.toString());
+        day.prayers[pName] = {
+          status: row[3] || 'NOT_COMPLETED',
+          location: row[4] || '',
+          timestamp: row[5] || null
+        };
+      }
+    }
+  }
+
+  // 4. Tahajjud
+  var tahajjudSheet = ss.getSheetByName("Tahajjud");
+  if (tahajjudSheet) {
+    var tahajjudData = tahajjudSheet.getDataRange().getValues();
+    for (var i = 1; i < tahajjudData.length; i++) {
+      var row = tahajjudData[i];
+      var d = row[1];
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.tahajjud = row[2] || 'MISSED';
+      }
+    }
+  }
+
+  // 5. QuranSessions
+  var quranSheet = ss.getSheetByName("QuranSessions");
+  if (quranSheet) {
+    var quranData = quranSheet.getDataRange().getValues();
+    for (var i = 1; i < quranData.length; i++) {
+      var row = quranData[i];
+      var d = row[1];
+      var sessType = row[2];
+      if (d && sessType) {
+        var day = getDayLog(d.toString());
+        if (sessType === "AM_TAFSIR") day.quranTafsir = row[3] || 'NOT_COMPLETED';
+        if (sessType === "PM_RECITATION") day.quranRecitation = row[3] || 'NOT_COMPLETED';
+      }
+    }
+  }
+
+  // 6. ADCD
+  var adcdSheet = ss.getSheetByName("ADCD");
+  if (adcdSheet) {
+    var adcdData = adcdSheet.getDataRange().getValues();
+    for (var i = 1; i < adcdData.length; i++) {
+      var row = adcdData[i];
+      var d = row[1];
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.adcdAttended = row[2] || 'NOT_ATTENDED';
+      }
+    }
+  }
+
+  // 7. Fitness
+  var fitSheet = ss.getSheetByName("Fitness");
+  if (fitSheet) {
+    var fitData = fitSheet.getDataRange().getValues();
+    for (var i = 1; i < fitData.length; i++) {
+      var row = fitData[i];
+      var d = row[1];
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.gymAttended = (row[2] === true || row[2] === "TRUE");
+        day.weightKg = row[3] ? parseFloat(row[3]) : null;
+        day.bmi = row[4] ? parseFloat(row[4]) : null;
+      }
+    }
+  }
+
+  // 8. Sleep
+  var sleepSheet = ss.getSheetByName("Sleep");
+  if (sleepSheet) {
+    var sleepData = sleepSheet.getDataRange().getValues();
+    for (var i = 1; i < sleepData.length; i++) {
+      var row = sleepData[i];
+      var d = row[1];
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.sleepHours = row[2] ? parseFloat(row[2]) : null;
+        day.bedtime = row[3] || "";
+        day.waketime = row[4] || "";
+      }
+    }
+  }
+
+  // 9. Cyber Sessions
+  var cyberSheet = ss.getSheetByName("CyberSessions");
+  if (cyberSheet) {
+    var cyberData = cyberSheet.getDataRange().getValues();
+    for (var i = 1; i < cyberData.length; i++) {
+      var row = cyberData[i];
+      var d = row[1];
+      var secs = parseFloat(row[4]) || 0;
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.cyberSeconds = (day.cyberSeconds || 0) + secs;
+      }
+    }
+  }
+
+  // 10. English Sessions
+  var engSheet = ss.getSheetByName("EnglishSessions");
+  if (engSheet) {
+    var engData = engSheet.getDataRange().getValues();
+    for (var i = 1; i < engData.length; i++) {
+      var row = engData[i];
+      var d = row[1];
+      var secs = parseFloat(row[4]) || 0;
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.englishSeconds = (day.englishSeconds || 0) + secs;
+      }
+    }
+  }
+
+  // 11. Quran Memorization
+  var memoSheet = ss.getSheetByName("QuranMemorization");
+  if (memoSheet) {
+    var memoData = memoSheet.getDataRange().getValues();
+    for (var i = 1; i < memoData.length; i++) {
+      var row = memoData[i];
+      var d = row[7] || row[1];
+      var count = parseInt(row[5], 10) || 0;
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.quranMemoCount = Math.max(day.quranMemoCount || 0, count);
+      }
+    }
+  }
+
+  // 12. Daily Reviews
+  var revSheet = ss.getSheetByName("DailyReviews");
+  if (revSheet) {
+    var revData = revSheet.getDataRange().getValues();
+    for (var i = 1; i < revData.length; i++) {
+      var row = revData[i];
+      var d = row[1];
+      if (d) {
+        var day = getDayLog(d.toString());
+        day.review = {
+          deenRating: parseInt(row[2], 10) || 3,
+          cyberRating: parseInt(row[3], 10) || 3,
+          englishRating: parseInt(row[4], 10) || 3,
+          fitnessRating: parseInt(row[5], 10) || 3,
+          energyRating: parseInt(row[6], 10) || 3,
+          whatWentWell: row[7] || "",
+          whatWentWrong: row[8] || "",
+          whatToImprove: row[9] || "",
+          completedAt: row[10] || ""
+        };
+      }
+    }
+  }
+
+  // 13. IELTS
+  var ieltsSheet = ss.getSheetByName("IELTS");
+  if (ieltsSheet) {
+    var ieltsData = ieltsSheet.getDataRange().getValues();
+    for (var i = 1; i < ieltsData.length; i++) {
+      var row = ieltsData[i];
+      if (!row[0]) continue;
+      data.ielts.push({
+        id: row[0],
+        date: row[1] || "",
+        listening: parseFloat(row[2]) || 0,
+        reading: parseFloat(row[3]) || 0,
+        writing: parseFloat(row[4]) || 0,
+        speaking: parseFloat(row[5]) || 0,
+        overall: parseFloat(row[6]) || 0,
+        timestamp: row[7] || ""
+      });
+    }
+  }
+
+  // 14. Goals
+  var goalsSheet = ss.getSheetByName("Goals");
+  if (goalsSheet) {
+    var goalsData = goalsSheet.getDataRange().getValues();
+    for (var i = 1; i < goalsData.length; i++) {
+      var row = goalsData[i];
+      if (!row[0]) continue;
+      var milestonesArr = [];
+      try { milestonesArr = JSON.parse(row[5] || "[]"); } catch(e) {}
+      data.goals.push({
+        id: row[0],
+        title: row[1] || "",
+        pillar: row[2] || "",
+        targetDate: row[3] || "",
+        status: row[4] || "IN_PROGRESS",
+        milestones: milestonesArr,
+        updatedAt: row[6] || ""
+      });
+    }
+  }
+
+  // 15. Weekly Reviews
+  var weeklySheet = ss.getSheetByName("WeeklyReviews");
+  if (weeklySheet) {
+    var weeklyData = weeklySheet.getDataRange().getValues();
+    for (var i = 1; i < weeklyData.length; i++) {
+      var row = weeklyData[i];
+      if (!row[0]) continue;
+      var weekStart = row[1] || row[0];
+      data.weeklyReviews[weekStart] = {
+        id: row[0],
+        weekStartDate: row[1] || "",
+        deenScore: row[2] || 0,
+        cyberHours: row[3] || 0,
+        englishHours: row[4] || 0,
+        gymCount: row[5] || 0,
+        avgSleep: row[6] || 0,
+        biggestWin: row[7] || "",
+        biggestProblem: row[8] || "",
+        nextPriority: row[9] || "",
+        timestamp: row[10] || ""
+      };
+    }
+  }
+
+  return handleResponse({
+    success: true,
+    data: data,
+    timestamp: new Date().toISOString()
+  });
 }
