@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#080a0e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="BATMAN — 9-Month Personal Transformation Command Center">
-  <title>BATMAN</title>
+  <title>BAT.</title>
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg">
@@ -19,13 +21,15 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/themes.css">
 </head>
+
 <body>
   <div id="app-container">
     <!-- App Header -->
     <header class="app-header">
       <div class="header-brand">
-        <img src="assets/batman-logo.svg" alt="BATMAN Logo" class="brand-logo" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.4));">
-        <span class="brand-title">BATMAN</span>
+        <img src="assets/batman-logo.svg" alt="BATMAN Logo" class="brand-logo"
+          style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.4));">
+        <span class="brand-title">BAT.</span>
       </div>
       <div class="header-actions">
         <div id="sync-status" class="sync-indicator" title="Sync Status">
@@ -37,7 +41,7 @@
 
     <!-- Main Viewport -->
     <main id="app-viewport" class="app-viewport">
-      
+
       <!-- 1. HOME VIEW -->
       <section id="view-home" class="app-view active">
         <!-- Next Scheduled Activity Hero -->
@@ -121,11 +125,13 @@
           <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
             <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
               <span class="card-title">FIVE DAILY PRAYERS</span>
-              <span id="deen-location-name" class="prayer-time" style="font-weight: 700; color: var(--text-primary);">Calicut, India</span>
+              <span id="deen-location-name" class="prayer-time"
+                style="font-weight: 700; color: var(--text-primary);">Calicut, India</span>
             </div>
-            <div id="deen-calc-method" style="font-size: var(--text-xs); color: var(--text-muted);">Karachi calculation method</div>
+            <div id="deen-calc-method" style="font-size: var(--text-xs); color: var(--text-muted);">Karachi calculation
+              method</div>
           </div>
-          
+
           <div id="prayers-list-container">
             <!-- Dynamic Prayer Rows -->
           </div>
@@ -142,7 +148,8 @@
               <span id="tahajjud-streak-label" class="prayer-time">Current Streak: 0 days</span>
             </div>
             <div class="prayer-actions">
-              <button id="tahajjud-toggle-btn" class="btn btn-secondary btn-sm" style="min-height: 44px; min-width: 100px;">MISSED</button>
+              <button id="tahajjud-toggle-btn" class="btn btn-secondary btn-sm"
+                style="min-height: 44px; min-width: 100px;">MISSED</button>
             </div>
           </div>
 
@@ -152,7 +159,8 @@
               <span class="prayer-time">Daily audio/lecture completion</span>
             </div>
             <div class="prayer-actions">
-              <button id="islamic-learning-toggle-btn" class="btn btn-secondary btn-sm" style="min-height: 44px; min-width: 100px;">NOT DONE</button>
+              <button id="islamic-learning-toggle-btn" class="btn btn-secondary btn-sm"
+                style="min-height: 44px; min-width: 100px;">NOT DONE</button>
             </div>
           </div>
         </div>
@@ -165,28 +173,35 @@
 
           <!-- Morning Session -->
           <div style="margin-bottom: var(--space-4);">
-            <div style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
+            <div
+              style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
               Morning (After Fajr)
             </div>
-            
+
             <div class="prayer-row">
               <div class="prayer-info">
                 <span class="prayer-name">Tafsir / Meaning</span>
                 <span class="prayer-time">Daily reflection & study</span>
               </div>
               <div class="prayer-actions">
-                <button id="quran-tafsir-toggle-btn" class="btn btn-secondary btn-sm" style="min-height: 44px; min-width: 100px;">NOT DONE</button>
+                <button id="quran-tafsir-toggle-btn" class="btn btn-secondary btn-sm"
+                  style="min-height: 44px; min-width: 100px;">NOT DONE</button>
               </div>
             </div>
 
             <!-- Memorization -->
-            <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-top: var(--space-3);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+            <div
+              style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-top: var(--space-3);">
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
                 <div>
-                  <span style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;">ACTIVE SURAH</span>
-                  <div id="quran-active-surah-name" style="font-size: var(--text-base); font-weight: 700; color: var(--text-primary);">Al-Mulk</div>
+                  <span style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;">ACTIVE
+                    SURAH</span>
+                  <div id="quran-active-surah-name"
+                    style="font-size: var(--text-base); font-weight: 700; color: var(--text-primary);">Al-Mulk</div>
                 </div>
-                <button id="quran-select-surah-btn" class="btn btn-outline btn-sm" style="min-height: 40px;">SELECT SURAH</button>
+                <button id="quran-select-surah-btn" class="btn btn-outline btn-sm" style="min-height: 40px;">SELECT
+                  SURAH</button>
               </div>
 
               <!-- Surah Overall Progress -->
@@ -208,15 +223,22 @@
               </div>
 
               <!-- Active Surah Verse Stepper -->
-              <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                 <div>
-                  <span style="font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Surah Verse Number</span>
-                  <div id="quran-verse-number-desc" style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary);">Verse 0 of 30</div>
+                  <span
+                    style="font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Surah
+                    Verse Number</span>
+                  <div id="quran-verse-number-desc"
+                    style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary);">Verse 0 of 30</div>
                 </div>
                 <div style="display: flex; align-items: center; gap: var(--space-2);">
-                  <button id="quran-memo-minus" class="btn btn-secondary" aria-label="Decrease verse count" style="min-height: 40px; min-width: 40px; font-size: 1.2rem; padding: 0;">-</button>
-                  <span id="quran-today-memo-count" style="font-family: var(--font-mono); font-weight: 800; font-size: 1.2rem; min-width: 36px; text-align: center; color: var(--accent-primary);">0</span>
-                  <button id="quran-memo-plus" class="btn btn-primary" aria-label="Memorize next verse" style="min-height: 40px; min-width: 40px; font-size: 1.2rem; padding: 0;">+</button>
+                  <button id="quran-memo-minus" class="btn btn-secondary" aria-label="Decrease verse count"
+                    style="min-height: 40px; min-width: 40px; font-size: 1.2rem; padding: 0;">-</button>
+                  <span id="quran-today-memo-count"
+                    style="font-family: var(--font-mono); font-weight: 800; font-size: 1.2rem; min-width: 36px; text-align: center; color: var(--accent-primary);">0</span>
+                  <button id="quran-memo-plus" class="btn btn-primary" aria-label="Memorize next verse"
+                    style="min-height: 40px; min-width: 40px; font-size: 1.2rem; padding: 0;">+</button>
                 </div>
               </div>
             </div>
@@ -224,7 +246,8 @@
 
           <!-- Evening Session -->
           <div style="border-top: 1px solid var(--border-subtle); padding-top: var(--space-3);">
-            <div style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
+            <div
+              style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
               Evening (After Maghrib)
             </div>
             <div class="prayer-row">
@@ -233,7 +256,8 @@
                 <span class="prayer-time">Daily evening recitation</span>
               </div>
               <div class="prayer-actions">
-                <button id="quran-recitation-toggle-btn" class="btn btn-secondary btn-sm" style="min-height: 44px; min-width: 100px;">NOT DONE</button>
+                <button id="quran-recitation-toggle-btn" class="btn btn-secondary btn-sm"
+                  style="min-height: 44px; min-width: 100px;">NOT DONE</button>
               </div>
             </div>
           </div>
@@ -255,22 +279,28 @@
               <span id="adcd-status-desc" class="prayer-time">Mon - Fri Attendance</span>
             </div>
             <div class="prayer-actions">
-              <button id="adcd-toggle-btn" class="btn btn-secondary btn-sm" style="min-height: 44px; min-width: 110px;">NOT ATTENDED</button>
+              <button id="adcd-toggle-btn" class="btn btn-secondary btn-sm"
+                style="min-height: 44px; min-width: 110px;">NOT ATTENDED</button>
             </div>
           </div>
 
           <!-- Deep Work Focus Timer -->
-          <div style="background-color: var(--bg-surface-elevated); padding: var(--space-4); border-radius: var(--radius-md);">
+          <div
+            style="background-color: var(--bg-surface-elevated); padding: var(--space-4); border-radius: var(--radius-md);">
             <div class="timer-container">
               <div class="timer-target">Independent Deep Work • Target: 4h</div>
               <div id="cyber-timer-display" class="timer-readout">00:00:00</div>
-              <div id="cyber-today-logged" style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-4);">
+              <div id="cyber-today-logged"
+                style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-4);">
                 Today: 0h 00m / 4h
               </div>
               <div class="timer-controls">
-                <button id="cyber-timer-start-btn" class="btn btn-primary" style="flex: 2; min-height: 44px;">START SESSION</button>
-                <button id="cyber-timer-pause-btn" class="btn btn-secondary" style="flex: 1; min-height: 44px; display: none;">PAUSE</button>
-                <button id="cyber-timer-stop-btn" class="btn btn-danger" style="flex: 1; min-height: 44px; display: none;">STOP</button>
+                <button id="cyber-timer-start-btn" class="btn btn-primary" style="flex: 2; min-height: 44px;">START
+                  SESSION</button>
+                <button id="cyber-timer-pause-btn" class="btn btn-secondary"
+                  style="flex: 1; min-height: 44px; display: none;">PAUSE</button>
+                <button id="cyber-timer-stop-btn" class="btn btn-danger"
+                  style="flex: 1; min-height: 44px; display: none;">STOP</button>
               </div>
             </div>
           </div>
@@ -283,23 +313,27 @@
           </div>
 
           <!-- English Practice Timer -->
-          <div style="background-color: var(--bg-surface-elevated); padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+          <div
+            style="background-color: var(--bg-surface-elevated); padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
             <div class="timer-container">
               <div class="timer-target">English Fluency • Target: 30m</div>
               <div id="english-timer-display" class="timer-readout">00:00:00</div>
-              <div id="english-today-logged" style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-4);">
+              <div id="english-today-logged"
+                style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-4);">
                 Today: 0m / 30m
               </div>
               <div class="timer-controls">
                 <button id="english-timer-start-btn" class="btn btn-primary" style="flex: 2;">START PRACTICE</button>
-                <button id="english-timer-pause-btn" class="btn btn-secondary" style="flex: 1; display: none;">PAUSE</button>
+                <button id="english-timer-pause-btn" class="btn btn-secondary"
+                  style="flex: 1; display: none;">PAUSE</button>
                 <button id="english-timer-stop-btn" class="btn btn-danger" style="flex: 1; display: none;">STOP</button>
               </div>
             </div>
           </div>
 
           <!-- IELTS Mock Test Log -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
             <div>
               <span class="card-title-lg">IELTS Mock Tests</span>
               <div style="font-size: var(--text-xs); color: var(--text-muted);">Target: Overall 7.5 (Min 7.0 each)</div>
@@ -329,9 +363,13 @@
           </div>
 
           <!-- Body Weight & BMI -->
-          <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
-              <span style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Body Weight (Bulking)</span>
+          <div
+            style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+              <span
+                style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Body
+                Weight (Bulking)</span>
               <button id="fitness-log-weight-btn" class="btn btn-outline btn-sm">Log Weight</button>
             </div>
             <div class="metric-grid">
@@ -349,9 +387,13 @@
           </div>
 
           <!-- Sleep Tracking -->
-          <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
-              <span style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Sleep & Recovery</span>
+          <div
+            style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md);">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+              <span
+                style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Sleep
+                & Recovery</span>
               <button id="sleep-log-btn" class="btn btn-outline btn-sm">Log Sleep</button>
             </div>
             <div class="metric-grid">
@@ -368,7 +410,8 @@
             </div>
             <div id="sleep-recovery-warning" class="warning-box" style="display: none;">
               <span>⚠️</span>
-              <span id="sleep-warning-text">Your 7-day average sleep is below 7.5h. Prioritize rest or take a 20m afternoon nap.</span>
+              <span id="sleep-warning-text">Your 7-day average sleep is below 7.5h. Prioritize rest or take a 20m
+                afternoon nap.</span>
             </div>
           </div>
         </div>
@@ -396,7 +439,9 @@
               <span class="progress-title">1. Deen Consistency</span>
               <span id="score-deen-val" class="progress-stats">--%</span>
             </div>
-            <div class="progress-track"><div id="score-deen-bar" class="progress-fill" style="width: 0%;"></div></div>
+            <div class="progress-track">
+              <div id="score-deen-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
           </div>
 
           <div class="progress-bar-container">
@@ -404,7 +449,9 @@
               <span class="progress-title">2. Cybersecurity (ADCD + Deep Work)</span>
               <span id="score-cyber-val" class="progress-stats">--%</span>
             </div>
-            <div class="progress-track"><div id="score-cyber-bar" class="progress-fill" style="width: 0%;"></div></div>
+            <div class="progress-track">
+              <div id="score-cyber-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
           </div>
 
           <div class="progress-bar-container">
@@ -412,7 +459,9 @@
               <span class="progress-title">3. English Practice</span>
               <span id="score-english-val" class="progress-stats">--%</span>
             </div>
-            <div class="progress-track"><div id="score-english-bar" class="progress-fill" style="width: 0%;"></div></div>
+            <div class="progress-track">
+              <div id="score-english-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
           </div>
 
           <div class="progress-bar-container">
@@ -420,7 +469,9 @@
               <span class="progress-title">4. Fitness (Gym Target)</span>
               <span id="score-fitness-val" class="progress-stats">--%</span>
             </div>
-            <div class="progress-track"><div id="score-fitness-bar" class="progress-fill" style="width: 0%;"></div></div>
+            <div class="progress-track">
+              <div id="score-fitness-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
           </div>
 
           <div class="progress-bar-container">
@@ -428,7 +479,9 @@
               <span class="progress-title">5. Recovery (Sleep Target)</span>
               <span id="score-sleep-val" class="progress-stats">--%</span>
             </div>
-            <div class="progress-track"><div id="score-sleep-bar" class="progress-fill" style="width: 0%;"></div></div>
+            <div class="progress-track">
+              <div id="score-sleep-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
           </div>
         </div>
 
@@ -547,7 +600,8 @@
                 <option value="Delhi,India">Delhi, India</option>
                 <option value="Hyderabad,India">Hyderabad, India</option>
               </select>
-              <button id="btn-detect-gps-city" class="btn btn-secondary btn-sm" title="Detect City via GPS (One-time only)">GPS</button>
+              <button id="btn-detect-gps-city" class="btn btn-secondary btn-sm"
+                title="Detect City via GPS (One-time only)">GPS</button>
             </div>
             <div class="form-hint">One-time detection to pick closest city preset. No background tracking.</div>
           </div>
@@ -592,31 +646,40 @@
           <div style="display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">Prayer Reminders</div>
-                <div style="font-size: var(--text-xs); color: var(--text-muted);">Strict alerts at calculated prayer times</div>
+                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">Prayer Reminders
+                </div>
+                <div style="font-size: var(--text-xs); color: var(--text-muted);">Strict alerts at calculated prayer
+                  times</div>
               </div>
-              <button id="toggle-notif-prayer" class="btn btn-success btn-sm notif-toggle-btn" data-key="notifPrayer">ON</button>
+              <button id="toggle-notif-prayer" class="btn btn-success btn-sm notif-toggle-btn"
+                data-key="notifPrayer">ON</button>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">Gym Reminder</div>
                 <div style="font-size: var(--text-xs); color: var(--text-muted);">Alert at scheduled workout time</div>
               </div>
-              <button id="toggle-notif-gym" class="btn btn-success btn-sm notif-toggle-btn" data-key="notifGym">ON</button>
+              <button id="toggle-notif-gym" class="btn btn-success btn-sm notif-toggle-btn"
+                data-key="notifGym">ON</button>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">English Practice</div>
+                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">English Practice
+                </div>
                 <div style="font-size: var(--text-xs); color: var(--text-muted);">30m focus communication alert</div>
               </div>
-              <button id="toggle-notif-english" class="btn btn-success btn-sm notif-toggle-btn" data-key="notifEnglish">ON</button>
+              <button id="toggle-notif-english" class="btn btn-success btn-sm notif-toggle-btn"
+                data-key="notifEnglish">ON</button>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">Sleep Wind-Down</div>
-                <div style="font-size: var(--text-xs); color: var(--text-muted);">Wind down reminder before target bedtime</div>
+                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">Sleep Wind-Down
+                </div>
+                <div style="font-size: var(--text-xs); color: var(--text-muted);">Wind down reminder before target
+                  bedtime</div>
               </div>
-              <button id="toggle-notif-sleep" class="btn btn-success btn-sm notif-toggle-btn" data-key="notifSleep">ON</button>
+              <button id="toggle-notif-sleep" class="btn btn-success btn-sm notif-toggle-btn"
+                data-key="notifSleep">ON</button>
             </div>
           </div>
         </div>
@@ -629,11 +692,13 @@
           </div>
           <div class="form-group">
             <label class="form-label">Backend Web App URL</label>
-            <input type="url" id="setting-gas-url" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+            <input type="url" id="setting-gas-url" class="form-input"
+              placeholder="https://script.google.com/macros/s/.../exec">
           </div>
           <div class="form-group">
             <label class="form-label">API Secret Token</label>
-            <input type="password" id="setting-gas-token" class="form-input" value="batman-secret-2026" placeholder="Enter API secret token">
+            <input type="password" id="setting-gas-token" class="form-input" value="batman-secret-2026"
+              placeholder="Enter API secret token">
             <div class="form-hint">Matches BATMAN_API_SECRET in Google Apps Script properties.</div>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-2);">
@@ -662,27 +727,44 @@
     <!-- Bottom Navigation Bar -->
     <nav class="app-navbar">
       <button class="nav-item active" data-view="home" id="nav-btn-home">
-        <svg viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <svg viewBox="0 0 24 24">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
         <span class="nav-label">Home</span>
       </button>
 
       <button class="nav-item" data-view="deen" id="nav-btn-deen">
-        <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+        <svg viewBox="0 0 24 24">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
         <span class="nav-label">Deen</span>
       </button>
 
       <button class="nav-item" data-view="growth" id="nav-btn-growth">
-        <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+        <svg viewBox="0 0 24 24">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+          <polyline points="17 6 23 6 23 12"></polyline>
+        </svg>
         <span class="nav-label">Growth</span>
       </button>
 
       <button class="nav-item" data-view="progress" id="nav-btn-progress">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
         <span class="nav-label">Progress</span>
       </button>
 
       <button class="nav-item" data-view="more" id="nav-btn-more">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+          </path>
+        </svg>
         <span class="nav-label">More</span>
       </button>
     </nav>
@@ -728,4 +810,5 @@
   <script src="js/modules/settings.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>
