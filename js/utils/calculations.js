@@ -167,6 +167,29 @@ const CalcUtils = {
   },
 
   /**
+   * Helper to parse any time string ('HH:mm', 'HH:mm:ss', '10:30 PM', '6:00 am') to total minutes from 00:00
+   * @param {string} timeStr 
+   * @returns {number|null}
+   */
+  parseTimeToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return null;
+    const clean = timeStr.trim().toLowerCase();
+    const isPM = clean.includes('pm');
+    const isAM = clean.includes('am');
+    const timeOnly = clean.replace(/[apm\s]/g, '');
+    const parts = timeOnly.split(':').map(Number);
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+
+    let hours = parts[0];
+    const minutes = parts[1];
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return hours * 60 + minutes;
+  },
+
+  /**
    * Calculate sleep duration in hours from bedtime and wake time strings (HH:mm)
    * Automatically handles crossing midnight (e.g., 22:30 to 06:00 = 7.5 hrs).
    * @param {string} bedtimeStr 'HH:mm'
@@ -174,16 +197,9 @@ const CalcUtils = {
    * @returns {{ hours: number, diffMin: number, hrsPart: number, minsPart: number, display: string } | null}
    */
   calculateSleepDuration(bedtimeStr, waketimeStr) {
-    if (!bedtimeStr || !waketimeStr) return null;
-    const bedParts = bedtimeStr.split(':').map(Number);
-    const wakeParts = waketimeStr.split(':').map(Number);
-    if (bedParts.length < 2 || wakeParts.length < 2) return null;
-    const [bH, bM] = bedParts;
-    const [wH, wM] = wakeParts;
-    if (isNaN(bH) || isNaN(bM) || isNaN(wH) || isNaN(wM)) return null;
-
-    const bTotal = bH * 60 + bM;
-    const wTotal = wH * 60 + wM;
+    const bTotal = this.parseTimeToMinutes(bedtimeStr);
+    const wTotal = this.parseTimeToMinutes(waketimeStr);
+    if (bTotal === null || wTotal === null) return null;
 
     let diffMin = 0;
     if (wTotal < bTotal) {

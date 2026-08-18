@@ -121,57 +121,83 @@ const SleepModule = {
       <button id="modal-save-sleep-btn" class="btn btn-primary btn-block">Save Sleep Record</button>
     `;
 
+    UI.openSheet('Record Sleep & Recovery', form);
+
     const bedInput = form.querySelector('#modal-bedtime');
     const wakeInput = form.querySelector('#modal-waketime');
     const hoursInput = form.querySelector('#modal-sleep-hours');
     const previewEl = form.querySelector('#sleep-calc-preview');
     const calcBadge = form.querySelector('#sleep-calc-badge');
+    const saveBtn = form.querySelector('#modal-save-sleep-btn');
 
-    const updateFromTimes = () => {
-      const res = CalcUtils.calculateSleepDuration(bedInput.value, wakeInput.value);
+    const syncDuration = () => {
+      const bVal = bedInput ? bedInput.value : '';
+      const wVal = wakeInput ? wakeInput.value : '';
+      if (!bVal || !wVal) return;
+
+      const res = CalcUtils.calculateSleepDuration(bVal, wVal);
       if (res && res.hours > 0) {
-        hoursInput.value = res.hours;
-        previewEl.innerHTML = `<span>⏱️ Calculated: <strong>${res.display}</strong></span>`;
-        calcBadge.textContent = 'Auto-calculated';
-        calcBadge.className = 'badge badge-masjid';
+        if (hoursInput) hoursInput.value = res.hours;
+        if (previewEl) previewEl.innerHTML = `<span>⏱️ Calculated: <strong>${res.display}</strong></span>`;
+        if (calcBadge) {
+          calcBadge.textContent = 'Auto-calculated';
+          calcBadge.className = 'badge badge-masjid';
+        }
       } else if (res && res.hours === 0) {
-        previewEl.innerHTML = `<span>⏱️ Same bedtime & waketime (0h)</span>`;
+        if (previewEl) previewEl.innerHTML = `<span>⏱️ Same bedtime & waketime (0h)</span>`;
       }
     };
 
-    bedInput.addEventListener('input', updateFromTimes);
-    bedInput.addEventListener('change', updateFromTimes);
-    wakeInput.addEventListener('input', updateFromTimes);
-    wakeInput.addEventListener('change', updateFromTimes);
-
-    hoursInput.addEventListener('input', () => {
-      calcBadge.textContent = 'Manual override';
-      calcBadge.className = 'badge badge-neutral';
+    // Attach listeners on both inputs
+    ['input', 'change', 'blur', 'keyup'].forEach(evt => {
+      if (bedInput) bedInput.addEventListener(evt, syncDuration);
+      if (wakeInput) wakeInput.addEventListener(evt, syncDuration);
     });
 
-    form.querySelector('#modal-save-sleep-btn').addEventListener('click', () => {
-      const hours = parseFloat(hoursInput.value);
-      const bedtime = bedInput.value;
-      const waketime = wakeInput.value;
-
-      if (isNaN(hours) || hours <= 0) {
-        UI.showToast('Please enter a valid sleep duration', 'warning');
-        return;
-      }
-
-      StorageService.saveDayLog(todayISO, {
-        sleepHours: hours,
-        bedtime,
-        waketime
+    if (hoursInput) {
+      hoursInput.addEventListener('input', () => {
+        if (calcBadge) {
+          calcBadge.textContent = 'Manual override';
+          calcBadge.className = 'badge badge-neutral';
+        }
       });
+    }
 
-      UI.closeSheet();
-      UI.showToast(`Logged ${hours}h sleep (${bedtime} – ${waketime})`, 'success');
-      this.renderSleep();
-      window.dispatchEvent(new CustomEvent('batman:data-updated'));
-    });
+    // Run initial sync
+    syncDuration();
 
-    UI.openSheet('Record Sleep & Recovery', form);
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        let hours = hoursInput ? parseFloat(hoursInput.value) : NaN;
+        const bedtime = bedInput ? bedInput.value : '';
+        const waketime = wakeInput ? wakeInput.value : '';
+
+        // Auto-calculate from bedtime and waketime if hoursInput is missing, empty, or invalid
+        if ((isNaN(hours) || hours <= 0) && bedtime && waketime) {
+          const autoRes = CalcUtils.calculateSleepDuration(bedtime, waketime);
+          if (autoRes && autoRes.hours > 0) {
+            hours = autoRes.hours;
+            if (hoursInput) hoursInput.value = hours;
+          }
+        }
+
+        if (isNaN(hours) || hours <= 0) {
+          UI.showToast('Please enter bedtime & wake time or sleep duration', 'warning');
+          return;
+        }
+
+        StorageService.saveDayLog(todayISO, {
+          sleepHours: hours,
+          bedtime,
+          waketime
+        });
+
+        UI.closeSheet();
+        UI.showToast(`Logged ${hours}h sleep (${bedtime} – ${waketime})`, 'success');
+        this.renderSleep();
+        window.dispatchEvent(new CustomEvent('batman:data-updated'));
+      });
+    }
   }
 };
 
