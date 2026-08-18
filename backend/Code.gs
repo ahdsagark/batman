@@ -190,6 +190,26 @@ function handleSyncBatch(ss, items) {
         data.nextPriority,
         data.timestamp || new Date().toISOString()
       ]);
+    } else if (table === "QuranMemorization") {
+      var memoId = recordId;
+      var sNum = data.surahNumber || data.surah_number || "";
+      var sName = data.surahName || data.surah_name || "";
+      var tVerses = data.totalVerses || data.total_verses || "";
+      var vDone = data.versesMemorized !== undefined ? data.versesMemorized : (data.verses_memorized || 0);
+      var tMemo = data.todayMemorized !== undefined ? data.todayMemorized : (data.today_memorized || 0);
+      var isComp = (vDone >= tVerses && tVerses > 0);
+      var statusText = data.status || (isComp ? "COMPLETED (100%)" : (vDone > 0 ? "IN_PROGRESS (" + Math.round((vDone / tVerses) * 100) + "%)" : "NOT_STARTED"));
+      upsertRowById(ss, "QuranMemorization", memoId, [
+        memoId,
+        sNum,
+        sName,
+        tVerses,
+        vDone,
+        tMemo,
+        statusText,
+        data.date || "",
+        data.timestamp || new Date().toISOString()
+      ]);
     }
     results.push({ id: recordId, status: "UPSERTED" });
   }
@@ -702,15 +722,39 @@ function handlePullAllData(ss) {
 
   // 11. Quran Memorization
   var memoSheet = ss.getSheetByName("QuranMemorization");
+  data.quranMemorization = [];
   if (memoSheet) {
     var memoData = memoSheet.getDataRange().getValues();
     for (var i = 1; i < memoData.length; i++) {
       var row = memoData[i];
-      var d = row[7] || row[1];
-      var count = parseInt(row[5], 10) || 0;
+      var sNum = parseInt(row[1], 10);
+      var sName = row[2] || "";
+      var tVerses = parseInt(row[3], 10) || 0;
+      var vDone = parseInt(row[4], 10) || 0;
+      var tMemo = parseInt(row[5], 10) || 0;
+      var statusStr = row[6] || "";
+      var d = row[7] || "";
+
+      data.quranMemorization.push({
+        id: row[0],
+        surahNumber: sNum,
+        surahName: sName,
+        totalVerses: tVerses,
+        versesMemorized: vDone,
+        todayMemorized: tMemo,
+        status: statusStr,
+        date: d,
+        timestamp: row[8] || ""
+      });
+
+      if (sNum > 0) {
+        if (!data.settings.surahProgress) data.settings.surahProgress = {};
+        data.settings.surahProgress[sNum] = Math.max(data.settings.surahProgress[sNum] || 0, vDone);
+      }
+
       if (d) {
         var day = getDayLog(d);
-        if (day) day.quranMemoCount = Math.max(day.quranMemoCount || 0, count);
+        if (day && tMemo > 0) day.quranMemoCount = Math.max(day.quranMemoCount || 0, tMemo);
       }
     }
   }

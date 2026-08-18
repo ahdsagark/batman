@@ -123,7 +123,10 @@ const ProgressModule = {
     if (sEnglish) sEnglish.textContent = `${englishStreak} day${englishStreak === 1 ? '' : 's'}`;
     if (sQuran) sQuran.textContent = `${quranStreak} day${quranStreak === 1 ? '' : 's'}`;
 
-    // 3. Render Totals and SVG Micro-Charts
+    // 3. Render Quran Memorization Mastery Card
+    this.renderQuranProgress();
+
+    // 4. Render Totals and SVG Micro-Charts
     const summaryContainer = document.getElementById('progress-summary-content');
     if (summaryContainer) {
       const hasAnyData = validDays > 0 && (totalCyberSeconds > 0 || totalEnglishSeconds > 0 || totalGymCount > 0 || sleepScoreSum > 0 || deenScoreSum > 0);
@@ -179,6 +182,106 @@ const ProgressModule = {
         `;
       }
     }
+  },
+
+  renderQuranProgress() {
+    const settings = StorageService.getSettings();
+    const surahProgress = settings.surahProgress || {};
+    const activeNumber = settings.activeSurahNumber || 67;
+    const activeSurah = (typeof CONFIG !== 'undefined' && CONFIG.SURAHS)
+      ? (CONFIG.SURAHS.find(s => s.number === activeNumber) || { number: 67, name: 'Al-Mulk', verses: 30 })
+      : { number: 67, name: 'Al-Mulk', verses: 30 };
+
+    let totalVersesMemorized = 0;
+    let completedSurahsCount = 0;
+    const completedSurahsList = [];
+    const inProgressSurahsList = [];
+
+    if (typeof CONFIG !== 'undefined' && CONFIG.SURAHS) {
+      CONFIG.SURAHS.forEach(s => {
+        const done = surahProgress[s.number] || 0;
+        if (done > 0) {
+          totalVersesMemorized += done;
+          if (done >= s.verses) {
+            completedSurahsCount++;
+            completedSurahsList.push(s);
+          } else {
+            inProgressSurahsList.push({ ...s, done });
+          }
+        }
+      });
+    }
+
+    const badgeEl = document.getElementById('progress-quran-total-verses');
+    if (badgeEl) {
+      badgeEl.textContent = `${totalVersesMemorized} Verse${totalVersesMemorized === 1 ? '' : 's'} Memorized`;
+    }
+
+    const container = document.getElementById('progress-quran-memorization-content');
+    if (!container) return;
+
+    const activeDone = Math.max(0, Math.min(activeSurah.verses, surahProgress[activeNumber] ?? settings.activeSurahCompletedVerses ?? 0));
+    const activePct = Math.round((activeDone / activeSurah.verses) * 100);
+    const isActiveCompleted = activeDone >= activeSurah.verses;
+
+    container.innerHTML = `
+      <!-- Active Surah Progress -->
+      <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div>
+            <span style="font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Active Surah</span>
+            <div style="font-size: var(--text-sm); font-weight: 800; color: var(--text-primary);">${activeSurah.number}. ${activeSurah.name}</div>
+          </div>
+          <span class="badge ${isActiveCompleted ? 'badge-masjid' : 'badge-neutral'}" style="font-size: 11px;">
+            ${isActiveCompleted ? '100% Completed ✓' : `${activeDone} / ${activeSurah.verses} (${activePct}%)`}
+          </span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill ${isActiveCompleted ? 'success' : ''}" style="width: ${activePct}%;"></div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="metric-grid" style="margin-bottom: var(--space-3);">
+        <div class="metric-box">
+          <div class="metric-label">Verses Memorized</div>
+          <div class="metric-value">${totalVersesMemorized}</div>
+          <div class="metric-subtext">Across all Surahs</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Surahs Completed</div>
+          <div class="metric-value" style="color: var(--status-success);">${completedSurahsCount}</div>
+          <div class="metric-subtext">${completedSurahsCount === 1 ? 'Surah' : 'Surahs'} 100% Done</div>
+        </div>
+      </div>
+
+      <!-- Surah Status List / Chips -->
+      ${completedSurahsList.length > 0 ? `
+        <div style="margin-bottom: var(--space-2);">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Completed Surahs (100%)</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${completedSurahsList.map(s => `
+              <span class="badge badge-masjid" style="font-size: 11px; padding: 4px 8px;">
+                ✓ Surah ${s.name} (${s.verses}v)
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${inProgressSurahsList.length > 0 ? `
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">In Progress</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${inProgressSurahsList.map(s => `
+              <span class="badge badge-neutral" style="font-size: 11px; padding: 4px 8px;">
+                ${s.name}: ${s.done}/${s.verses}v (${Math.round((s.done / s.verses) * 100)}%)
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    `;
   },
 
   updateBar(valId, barId, percentage) {

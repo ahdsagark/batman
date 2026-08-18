@@ -155,6 +155,26 @@ const StorageService = {
     return list;
   },
 
+  syncSurahMemorization(surahNumber, versesMemorized, todayMemorized = 0) {
+    const surah = (typeof CONFIG !== 'undefined' && CONFIG.SURAHS) 
+      ? (CONFIG.SURAHS.find(s => s.number === surahNumber) || { number: surahNumber, name: `Surah ${surahNumber}`, verses: 30 })
+      : { number: surahNumber, name: `Surah ${surahNumber}`, verses: 30 };
+    const isCompleted = versesMemorized >= surah.verses && surah.verses > 0;
+    const todayISO = DateUtils.getTodayISO();
+    
+    this.enqueueSync('QuranMemorization', 'UPSERT', {
+      id: `surah-${surahNumber}`,
+      surahNumber: surah.number,
+      surahName: surah.name,
+      totalVerses: surah.verses,
+      versesMemorized: versesMemorized,
+      todayMemorized: todayMemorized,
+      status: isCompleted ? 'COMPLETED (100%)' : (versesMemorized > 0 ? `IN_PROGRESS (${Math.round((versesMemorized / surah.verses) * 100)}%)` : 'NOT_STARTED'),
+      date: todayISO,
+      timestamp: DateUtils.getNowISO()
+    });
+  },
+
   // -------------------------------------------------------------
   // DAY LOGS (Single source of truth for date-based records)
   // -------------------------------------------------------------
@@ -586,6 +606,21 @@ const StorageService = {
           ...localWeeklyReviews
         };
         this.safeSetItem(this.KEYS.WEEKLY_REVIEWS, mergedWeekly);
+      }
+
+      // 7. Reconcile Quran Memorization
+      if (Array.isArray(cloudData.quranMemorization) && cloudData.quranMemorization.length > 0) {
+        const currentSettings = this.getSettings();
+        const surahProgress = { ...(currentSettings.surahProgress || {}) };
+        cloudData.quranMemorization.forEach(item => {
+          const sNum = parseInt(item.surahNumber || item.surah_number, 10);
+          const vDone = parseInt(item.versesMemorized || item.verses_memorized || item.memorized_verses, 10) || 0;
+          if (sNum > 0) {
+            surahProgress[sNum] = Math.max(surahProgress[sNum] || 0, vDone);
+          }
+        });
+        currentSettings.surahProgress = surahProgress;
+        this.safeSetItem(this.KEYS.SETTINGS, currentSettings);
       }
 
       return true;

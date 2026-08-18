@@ -92,6 +92,9 @@ const QuranModule = {
     const surahNameEl = document.getElementById('quran-active-surah-name');
     const surahProgressTxt = document.getElementById('quran-surah-progress-txt');
     const surahProgressBar = document.getElementById('quran-surah-progress-bar');
+    const todayTargetTxt = document.getElementById('quran-today-target-txt');
+    const todayTargetBar = document.getElementById('quran-today-target-bar');
+    const verseDescEl = document.getElementById('quran-verse-number-desc');
     const todayCountEl = document.getElementById('quran-today-memo-count');
     const selectBtn = document.getElementById('quran-select-surah-btn');
 
@@ -103,6 +106,7 @@ const QuranModule = {
     const pct = Math.round((completedVerses / totalVerses) * 100);
     const isSurahCompleted = completedVerses >= totalVerses;
     const todayMemo = log.quranMemoCount || 0;
+    const todayTargetPct = Math.min(100, Math.round((todayMemo / 3) * 100));
 
     if (surahNameEl) {
       surahNameEl.innerHTML = `
@@ -116,6 +120,7 @@ const QuranModule = {
       `;
     }
 
+    // 3a. Overall Surah Progress
     if (surahProgressTxt) {
       if (isSurahCompleted) {
         surahProgressTxt.textContent = `${totalVerses} / ${totalVerses} (100%) • Completed ✓`;
@@ -129,8 +134,29 @@ const QuranModule = {
       surahProgressBar.className = isSurahCompleted ? 'progress-fill success' : 'progress-fill';
     }
 
+    // 3b. Today's 3-Verse Target Progress
+    if (todayTargetTxt) {
+      todayTargetTxt.textContent = `${todayMemo} / 3 Verses (${todayTargetPct}%)${todayMemo >= 3 ? ' • Target Met ✓' : ''}`;
+    }
+
+    if (todayTargetBar) {
+      todayTargetBar.style.width = `${todayTargetPct}%`;
+      todayTargetBar.className = todayMemo >= 3 ? 'progress-fill success' : 'progress-fill';
+    }
+
+    // 3c. Verse Stepper (Active Surah Verse Number)
+    if (verseDescEl) {
+      if (isSurahCompleted) {
+        verseDescEl.textContent = `All ${totalVerses} Verses Memorized ✓`;
+      } else if (completedVerses === 0) {
+        verseDescEl.textContent = `Ready to memorize Verse 1 of ${totalVerses}`;
+      } else {
+        verseDescEl.textContent = `Memorized up to Verse ${completedVerses} of ${totalVerses}`;
+      }
+    }
+
     if (todayCountEl) {
-      todayCountEl.textContent = todayMemo;
+      todayCountEl.textContent = completedVerses;
     }
 
     // Determine correct button text
@@ -175,6 +201,7 @@ const QuranModule = {
         surahProgress
       });
       StorageService.saveDayLog(todayISO, { quranMemoCount: nextToday });
+      StorageService.syncSurahMemorization(activeNumber, nextCompleted, nextToday);
 
       UI.vibrate(10);
       this.renderQuran();
@@ -200,6 +227,7 @@ const QuranModule = {
         surahProgress
       });
       StorageService.saveDayLog(todayISO, { quranMemoCount: nextToday });
+      StorageService.syncSurahMemorization(activeNumber, nextCompleted, nextToday);
 
       UI.vibrate(10);
       this.renderQuran();
@@ -292,6 +320,7 @@ const QuranModule = {
       activeSurahCompletedVerses: existingProgress,
       surahProgress: { ...surahProgress, [surah.number]: existingProgress }
     });
+    StorageService.syncSurahMemorization(surah.number, existingProgress, 0);
 
     UI.closeSheet();
     UI.showToast(`Active Surah set to: ${surah.name} (${existingProgress}/${surah.verses} verses)`, 'success');

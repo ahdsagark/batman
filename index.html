@@ -192,22 +192,34 @@
                 <button id="quran-select-surah-btn" class="btn btn-outline btn-sm" style="min-height: 40px;">SELECT SURAH</button>
               </div>
 
+              <!-- Surah Overall Progress -->
               <div class="progress-header">
-                <span class="progress-title">Surah Memorization</span>
+                <span class="progress-title">Surah Progress</span>
                 <span id="quran-surah-progress-txt" class="progress-stats">0 / 30 (0%)</span>
               </div>
               <div class="progress-track" style="margin-bottom: var(--space-3);">
                 <div id="quran-surah-progress-bar" class="progress-fill" style="width: 0%;"></div>
               </div>
 
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: var(--text-xs); color: var(--text-secondary);">
-                  Today's Target: <strong>3 verses</strong>
+              <!-- Today's 3-Verse Daily Target -->
+              <div class="progress-header">
+                <span class="progress-title">Today's Target (3 Verses)</span>
+                <span id="quran-today-target-txt" class="progress-stats">0 / 3 Verses (0%)</span>
+              </div>
+              <div class="progress-track" style="margin-bottom: var(--space-3);">
+                <div id="quran-today-target-bar" class="progress-fill" style="width: 0%;"></div>
+              </div>
+
+              <!-- Active Surah Verse Stepper -->
+              <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <div>
+                  <span style="font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Surah Verse Number</span>
+                  <div id="quran-verse-number-desc" style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary);">Verse 0 of 30</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: var(--space-3);">
-                  <button id="quran-memo-minus" class="btn btn-secondary" aria-label="Decrease verse count" style="min-height: 44px; min-width: 44px; font-size: 1.2rem; padding: 0;">-</button>
-                  <span id="quran-today-memo-count" style="font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; width: 28px; text-align: center;">0</span>
-                  <button id="quran-memo-plus" class="btn btn-secondary" aria-label="Increase verse count" style="min-height: 44px; min-width: 44px; font-size: 1.2rem; padding: 0;">+</button>
+                <div style="display: flex; align-items: center; gap: var(--space-2);">
+                  <button id="quran-memo-minus" class="btn btn-secondary" aria-label="Decrease verse count" style="min-height: 40px; min-width: 40px; font-size: 1.2rem; padding: 0;">-</button>
+                  <span id="quran-today-memo-count" style="font-family: var(--font-mono); font-weight: 800; font-size: 1.2rem; min-width: 36px; text-align: center; color: var(--accent-primary);">0</span>
+                  <button id="quran-memo-plus" class="btn btn-primary" aria-label="Memorize next verse" style="min-height: 40px; min-width: 40px; font-size: 1.2rem; padding: 0;">+</button>
                 </div>
               </div>
             </div>
@@ -445,6 +457,15 @@
               <div class="metric-label">Qur'an</div>
               <div id="streak-quran" class="metric-value">0 days</div>
             </div>
+          </div>
+        <!-- Qur'an Memorization Progress & Mastery Card -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">QUR'AN HIFDH & MEMORIZATION</span>
+            <span id="progress-quran-total-verses" class="badge badge-masjid">0 Verses</span>
+          </div>
+          <div id="progress-quran-memorization-content">
+            <!-- Dynamic Quran memorization stats rendered by progress.js -->
           </div>
         </div>
 
