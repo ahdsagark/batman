@@ -347,8 +347,6 @@ function syncDayLog(ss, dayData) {
       now
     ]);
   }
-
-  }
 }
 
 // In-memory sheet and row cache for high-performance batch processing
