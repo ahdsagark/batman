@@ -89,12 +89,21 @@ const StorageService = {
     try {
       const data = localStorage.getItem(this.KEYS.SETTINGS);
       const parsed = data ? JSON.parse(data) : {};
-      if (!parsed.surahProgress) {
+      if (!parsed.surahProgress || typeof parsed.surahProgress !== 'object') {
         parsed.surahProgress = {};
-        if (parsed.activeSurahNumber) {
-          parsed.surahProgress[parsed.activeSurahNumber] = parsed.activeSurahCompletedVerses || 0;
-        }
       }
+
+      // Clean up surahProgress: only keep valid surah numbers 1-114 with positive verse count
+      const cleanProgress = {};
+      Object.keys(parsed.surahProgress).forEach(key => {
+        const sNum = parseInt(key, 10);
+        const val = parseInt(parsed.surahProgress[key], 10) || 0;
+        if (!isNaN(sNum) && sNum >= 1 && sNum <= 114 && val > 0) {
+          cleanProgress[sNum] = val;
+        }
+      });
+      parsed.surahProgress = cleanProgress;
+
       return parsed;
     } catch (e) {
       console.error('Error parsing settings:', e);
@@ -104,10 +113,45 @@ const StorageService = {
 
   saveSettings(settings) {
     const current = this.getSettings();
-    const updated = { ...current, ...settings, updatedAt: DateUtils.getNowISO() };
+    const cleanProgress = {};
+    const candidateProgress = settings.surahProgress !== undefined ? settings.surahProgress : current.surahProgress;
+
+    if (candidateProgress && typeof candidateProgress === 'object') {
+      Object.keys(candidateProgress).forEach(key => {
+        const sNum = parseInt(key, 10);
+        const val = parseInt(candidateProgress[key], 10) || 0;
+        if (!isNaN(sNum) && sNum >= 1 && sNum <= 114 && val > 0) {
+          cleanProgress[sNum] = val;
+        }
+      });
+    }
+
+    const updated = { 
+      ...current, 
+      ...settings, 
+      surahProgress: cleanProgress,
+      updatedAt: DateUtils.getNowISO() 
+    };
+
     this.safeSetItem(this.KEYS.SETTINGS, updated);
     this.enqueueSync('Settings', 'UPDATE', { id: 'user_settings', ...updated });
     return updated;
+  },
+
+  resetQuranProgress() {
+    const current = this.getSettings();
+    current.activeSurahNumber = 67;
+    current.activeSurahName = 'Al-Mulk';
+    current.activeSurahVerses = 30;
+    current.activeSurahCompletedVerses = 0;
+    current.surahProgress = {};
+    
+    this.safeSetItem(this.KEYS.SETTINGS, current);
+    this.enqueueSync('Settings', 'UPDATE', { id: 'user_settings', ...current });
+
+    const todayISO = DateUtils.getTodayISO();
+    this.saveDayLog(todayISO, { quranMemoCount: 0 });
+    return current;
   },
 
   // -------------------------------------------------------------
@@ -609,18 +653,22 @@ const StorageService = {
       }
 
       // 7. Reconcile Quran Memorization
-      if (Array.isArray(cloudData.quranMemorization) && cloudData.quranMemorization.length > 0) {
+      if (Array.isArray(cloudData.quranMemorization)) {
         const currentSettings = this.getSettings();
         const surahProgress = { ...(currentSettings.surahProgress || {}) };
         cloudData.quranMemorization.forEach(item => {
           const sNum = parseInt(item.surahNumber || item.surah_number, 10);
           const vDone = parseInt(item.versesMemorized || item.verses_memorized || item.memorized_verses, 10) || 0;
-          if (sNum > 0) {
-            surahProgress[sNum] = Math.max(surahProgress[sNum] || 0, vDone);
+          if (!isNaN(sNum) && sNum >= 1 && sNum <= 114) {
+            if (vDone > 0) {
+              surahProgress[sNum] = vDone;
+            } else {
+              delete surahProgress[sNum];
+            }
           }
         });
         currentSettings.surahProgress = surahProgress;
-        this.safeSetItem(this.KEYS.SETTINGS, currentSettings);
+        this.saveSettings(currentSettings);
       }
 
       return true;

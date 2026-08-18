@@ -735,26 +735,26 @@ function handlePullAllData(ss) {
       var statusStr = row[6] || "";
       var d = row[7] || "";
 
-      data.quranMemorization.push({
-        id: row[0],
-        surahNumber: sNum,
-        surahName: sName,
-        totalVerses: tVerses,
-        versesMemorized: vDone,
-        todayMemorized: tMemo,
-        status: statusStr,
-        date: d,
-        timestamp: row[8] || ""
-      });
+      if (!isNaN(sNum) && sNum >= 1 && sNum <= 114 && vDone > 0) {
+        data.quranMemorization.push({
+          id: row[0] || ("surah-" + sNum),
+          surahNumber: sNum,
+          surahName: sName,
+          totalVerses: tVerses,
+          versesMemorized: vDone,
+          todayMemorized: tMemo,
+          status: statusStr,
+          date: d,
+          timestamp: row[8] || ""
+        });
 
-      if (sNum > 0) {
         if (!data.settings.surahProgress) data.settings.surahProgress = {};
-        data.settings.surahProgress[sNum] = Math.max(data.settings.surahProgress[sNum] || 0, vDone);
+        data.settings.surahProgress[sNum] = vDone;
       }
 
-      if (d) {
+      if (d && tMemo > 0) {
         var day = getDayLog(d);
-        if (day && tMemo > 0) day.quranMemoCount = Math.max(day.quranMemoCount || 0, tMemo);
+        if (day) day.quranMemoCount = Math.max(day.quranMemoCount || 0, tMemo);
       }
     }
   }

@@ -187,8 +187,8 @@ const ProgressModule = {
   renderQuranProgress() {
     const settings = StorageService.getSettings();
     const surahProgress = settings.surahProgress || {};
-    const activeNumber = settings.activeSurahNumber || 67;
-    const activeSurah = (typeof CONFIG !== 'undefined' && CONFIG.SURAHS)
+    const activeNumber = parseInt(settings.activeSurahNumber, 10) || 67;
+    const activeSurah = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.SURAHS))
       ? (CONFIG.SURAHS.find(s => s.number === activeNumber) || { number: 67, name: 'Al-Mulk', verses: 30 })
       : { number: 67, name: 'Al-Mulk', verses: 30 };
 
@@ -197,16 +197,18 @@ const ProgressModule = {
     const completedSurahsList = [];
     const inProgressSurahsList = [];
 
-    if (typeof CONFIG !== 'undefined' && CONFIG.SURAHS) {
+    if (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.SURAHS)) {
       CONFIG.SURAHS.forEach(s => {
-        const done = surahProgress[s.number] || 0;
-        if (done > 0) {
-          totalVersesMemorized += done;
-          if (done >= s.verses) {
+        const rawDone = surahProgress[s.number];
+        const done = typeof rawDone === 'number' ? rawDone : (parseInt(rawDone, 10) || 0);
+        if (done > 0 && typeof s.verses === 'number' && s.verses > 0) {
+          const validDone = Math.min(s.verses, done);
+          totalVersesMemorized += validDone;
+          if (validDone >= s.verses) {
             completedSurahsCount++;
             completedSurahsList.push(s);
           } else {
-            inProgressSurahsList.push({ ...s, done });
+            inProgressSurahsList.push({ ...s, done: validDone });
           }
         }
       });
@@ -214,15 +216,16 @@ const ProgressModule = {
 
     const badgeEl = document.getElementById('progress-quran-total-verses');
     if (badgeEl) {
-      badgeEl.textContent = `${totalVersesMemorized} Verse${totalVersesMemorized === 1 ? '' : 's'} Memorized`;
+      badgeEl.textContent = `${totalVersesMemorized} Verse${totalVersesMemorized === 1 ? '' : 's'}`;
     }
 
     const container = document.getElementById('progress-quran-memorization-content');
     if (!container) return;
 
-    const activeDone = Math.max(0, Math.min(activeSurah.verses, surahProgress[activeNumber] ?? settings.activeSurahCompletedVerses ?? 0));
-    const activePct = Math.round((activeDone / activeSurah.verses) * 100);
-    const isActiveCompleted = activeDone >= activeSurah.verses;
+    const rawActiveDone = surahProgress[activeNumber] !== undefined ? surahProgress[activeNumber] : (settings.activeSurahCompletedVerses || 0);
+    const activeDone = Math.max(0, Math.min(activeSurah.verses, parseInt(rawActiveDone, 10) || 0));
+    const activePct = activeSurah.verses > 0 ? Math.round((activeDone / activeSurah.verses) * 100) : 0;
+    const isActiveCompleted = activeDone >= activeSurah.verses && activeSurah.verses > 0;
 
     container.innerHTML = `
       <!-- Active Surah Progress -->
@@ -257,7 +260,7 @@ const ProgressModule = {
 
       <!-- Surah Status List / Chips -->
       ${completedSurahsList.length > 0 ? `
-        <div style="margin-bottom: var(--space-2);">
+        <div style="margin-bottom: var(--space-3);">
           <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">Completed Surahs (100%)</div>
           <div style="display: flex; flex-wrap: wrap; gap: 6px;">
             ${completedSurahsList.map(s => `
@@ -270,7 +273,7 @@ const ProgressModule = {
       ` : ''}
 
       ${inProgressSurahsList.length > 0 ? `
-        <div>
+        <div style="margin-bottom: var(--space-3);">
           <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">In Progress</div>
           <div style="display: flex; flex-wrap: wrap; gap: 6px;">
             ${inProgressSurahsList.map(s => `
@@ -281,7 +284,34 @@ const ProgressModule = {
           </div>
         </div>
       ` : ''}
+
+      ${totalVersesMemorized === 0 ? `
+        <div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 6px 0;">
+          No memorized verses logged yet. Tap <strong>+</strong> under the Deen tab to start your daily 3 verses!
+        </div>
+      ` : `
+        <div style="text-align: right; margin-top: var(--space-2);">
+          <button id="btn-reset-quran-progress" class="btn btn-outline btn-sm" style="font-size: 10px; padding: 2px 8px; color: var(--text-muted);">
+            Reset Qur'an Counts
+          </button>
+        </div>
+      `}
     `;
+
+    const resetBtn = container.querySelector('#btn-reset-quran-progress');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        if (confirm('Reset all Quran memorization counts back to 0?')) {
+          StorageService.resetQuranProgress();
+          UI.showToast('Quran memorization progress reset to 0', 'info');
+          this.renderQuranProgress();
+          if (window.QuranModule && window.QuranModule.renderQuran) {
+            window.QuranModule.renderQuran();
+          }
+          window.dispatchEvent(new CustomEvent('batman:data-updated'));
+        }
+      });
+    }
   },
 
   updateBar(valId, barId, percentage) {
