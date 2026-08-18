@@ -172,24 +172,98 @@ const DashboardModule = {
       const duration = parseInt(r.duration, 10) || 30;
       const endMins = (startMins + duration) % 1440;
 
-      // Determine completion status
       let isCompleted = false;
-      const lowerName = (r.name || '').toLowerCase();
+      let buttonText = 'COMPLETE';
+      let buttonClass = 'btn-outline';
 
-      if (lowerName.includes('fajr') && log.prayers && log.prayers.fajr && log.prayers.fajr.status === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('dhuhr') && log.prayers && log.prayers.dhuhr && log.prayers.dhuhr.status === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('asr') && log.prayers && log.prayers.asr && log.prayers.asr.status === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('maghrib') && log.prayers && log.prayers.maghrib && log.prayers.maghrib.status === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('isha') && log.prayers && log.prayers.isha && log.prayers.isha.status === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('tahajjud') && log.tahajjud === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('qur') && (lowerName.includes('morning') || lowerName.includes('tafsir')) && (log.quranTafsir === 'COMPLETED' || (log.quranMemoCount || 0) > 0)) isCompleted = true;
-      else if (lowerName.includes('qur') && (lowerName.includes('evening') || lowerName.includes('recitation')) && log.quranRecitation === 'COMPLETED') isCompleted = true;
-      else if (lowerName.includes('adcd') && log.adcdAttended === 'ATTENDED') isCompleted = true;
-      else if (lowerName.includes('cyber') && (log.cyberSeconds || 0) >= (CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400)) isCompleted = true;
-      else if (lowerName.includes('english') && (log.englishSeconds || 0) >= (CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600)) isCompleted = true;
-      else if (lowerName.includes('gym') && log.gymAttended) isCompleted = true;
-      else if (lowerName.includes('sleep') && log.sleepHours) isCompleted = true;
-      else if (log.customRoutines && Array.isArray(log.customRoutines) && log.customRoutines.includes(r.id)) isCompleted = true;
+      // 1. Check 5 Prayers by ID
+      if (r.id === 'routine-fajr' || r.id === 'routine-dhuhr' || r.id === 'routine-asr' || r.id === 'routine-maghrib' || r.id === 'routine-isha') {
+        const pKey = r.id.replace('routine-', '');
+        const pRec = (log.prayers && log.prayers[pKey]) || { status: 'NOT_COMPLETED', location: '' };
+        if (pRec.status === 'COMPLETED') {
+          isCompleted = true;
+          if (pRec.location === 'MASJID') {
+            buttonText = 'MASJID ✓';
+            buttonClass = 'btn-success';
+          } else if (pRec.location === 'HOME') {
+            buttonText = 'HOME ✓';
+            buttonClass = 'btn-primary';
+          } else {
+            buttonText = 'DONE ✓';
+            buttonClass = 'btn-success';
+          }
+        }
+      } 
+      // 2. Tahajjud
+      else if (r.id === 'routine-tahajjud') {
+        if (log.tahajjud === 'COMPLETED') {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 3. Morning Qur’an Tafsir & Memorization
+      else if (r.id === 'routine-quran-am') {
+        if (log.quranTafsir === 'COMPLETED' || (log.quranMemoCount || 0) > 0 || (log.customRoutines && log.customRoutines.includes('routine-quran-am'))) {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 4. Evening Qur’an Recitation
+      else if (r.id === 'routine-quran-pm') {
+        if (log.quranRecitation === 'COMPLETED' || (log.customRoutines && log.customRoutines.includes('routine-quran-pm'))) {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 5. ADCD Offensive Security Class
+      else if (r.id === 'routine-adcd') {
+        if (log.adcdAttended === 'ATTENDED') {
+          isCompleted = true;
+          buttonText = 'ATTENDED ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 6. Gym Workout Session
+      else if (r.id === 'routine-gym') {
+        if (log.gymAttended) {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 7. Cyber Deep Work
+      else if (r.id === 'routine-cyber-work') {
+        if ((log.cyberSeconds || 0) >= (CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400)) {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 8. English Communication
+      else if (r.id === 'routine-english') {
+        if ((log.englishSeconds || 0) >= (CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600)) {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 9. Daily Review & Sleep Wind Down
+      else if (r.id === 'routine-review-sleep') {
+        if (log.sleepHours || (log.customRoutines && log.customRoutines.includes('routine-review-sleep'))) {
+          isCompleted = true;
+          buttonText = 'DONE ✓';
+          buttonClass = 'btn-success';
+        }
+      }
+      // 10. General / Custom Routines (Breakfast, Commute In, Commute Out, Cyber Rev, etc.)
+      else if (log.customRoutines && Array.isArray(log.customRoutines) && log.customRoutines.includes(r.id)) {
+        isCompleted = true;
+        buttonText = 'DONE ✓';
+        buttonClass = 'btn-success';
+      }
 
       items.push({
         ...r,
@@ -198,7 +272,9 @@ const DashboardModule = {
         duration,
         startTimeStr: DateUtils.minutesToHHMM(startMins),
         endTimeStr: DateUtils.minutesToHHMM(startMins + duration),
-        isCompleted
+        isCompleted,
+        buttonText,
+        buttonClass
       });
     });
 
@@ -215,115 +291,96 @@ const DashboardModule = {
     const routine = routines.find(r => r.id === routineId);
     if (!routine) return;
 
-    const lowerName = (routine.name || '').toLowerCase();
     const updates = {};
     let customRoutines = Array.isArray(log.customRoutines) ? [...log.customRoutines] : [];
-    const isCustomCompleted = customRoutines.includes(routineId);
 
-    // 1. 5 Daily Prayers
-    if (lowerName.includes('fajr') || routine.anchor === 'prayer-fajr') {
-      const isDone = log.prayers && log.prayers.fajr && log.prayers.fajr.status === 'COMPLETED';
+    // 1. 5 Daily Prayers (3-state cycle: NOT_COMPLETED -> MASJID -> HOME -> NOT_COMPLETED)
+    if (routineId === 'routine-fajr' || routineId === 'routine-dhuhr' || routineId === 'routine-asr' || routineId === 'routine-maghrib' || routineId === 'routine-isha') {
+      const prayerKey = routineId.replace('routine-', '');
+      const current = (log.prayers && log.prayers[prayerKey]) || { status: 'NOT_COMPLETED', location: '' };
+
+      let nextStatus = 'COMPLETED';
+      let nextLocation = 'MASJID';
+
+      if (current.status === 'COMPLETED' && current.location === 'MASJID') {
+        nextLocation = 'HOME';
+      } else if (current.status === 'COMPLETED' && current.location === 'HOME') {
+        nextStatus = 'NOT_COMPLETED';
+        nextLocation = '';
+      }
+
+      const pLabel = prayerKey.charAt(0).toUpperCase() + prayerKey.slice(1);
+      const locLabel = nextLocation ? ` (${nextLocation === 'MASJID' ? 'Masjid' : 'Home'})` : '';
+      UI.showToast(`${pLabel} marked ${nextStatus === 'COMPLETED' ? 'completed' + locLabel + ' ✓' : 'incomplete'}`, nextStatus === 'COMPLETED' ? 'success' : 'info', 2000);
+
       updates.prayers = {
         ...(log.prayers || {}),
-        fajr: {
-          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
-          location: isDone ? '' : 'MASJID',
-          timestamp: isDone ? null : DateUtils.getNowISO()
+        [prayerKey]: {
+          status: nextStatus,
+          location: nextLocation,
+          timestamp: nextStatus === 'COMPLETED' ? DateUtils.getNowISO() : null
         }
       };
-      UI.showToast(`Fajr ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } else if (lowerName.includes('dhuhr') || routine.anchor === 'prayer-dhuhr') {
-      const isDone = log.prayers && log.prayers.dhuhr && log.prayers.dhuhr.status === 'COMPLETED';
-      updates.prayers = {
-        ...(log.prayers || {}),
-        dhuhr: {
-          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
-          location: isDone ? '' : 'MASJID',
-          timestamp: isDone ? null : DateUtils.getNowISO()
-        }
-      };
-      UI.showToast(`Dhuhr ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } else if (lowerName.includes('asr') || routine.anchor === 'prayer-asr') {
-      const isDone = log.prayers && log.prayers.asr && log.prayers.asr.status === 'COMPLETED';
-      updates.prayers = {
-        ...(log.prayers || {}),
-        asr: {
-          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
-          location: isDone ? '' : 'MASJID',
-          timestamp: isDone ? null : DateUtils.getNowISO()
-        }
-      };
-      UI.showToast(`Asr ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } else if (lowerName.includes('maghrib') || routine.anchor === 'prayer-maghrib') {
-      const isDone = log.prayers && log.prayers.maghrib && log.prayers.maghrib.status === 'COMPLETED';
-      updates.prayers = {
-        ...(log.prayers || {}),
-        maghrib: {
-          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
-          location: isDone ? '' : 'MASJID',
-          timestamp: isDone ? null : DateUtils.getNowISO()
-        }
-      };
-      UI.showToast(`Maghrib ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } else if (lowerName.includes('isha') || routine.anchor === 'prayer-isha') {
-      const isDone = log.prayers && log.prayers.isha && log.prayers.isha.status === 'COMPLETED';
-      updates.prayers = {
-        ...(log.prayers || {}),
-        isha: {
-          status: isDone ? 'NOT_COMPLETED' : 'COMPLETED',
-          location: isDone ? '' : 'MASJID',
-          timestamp: isDone ? null : DateUtils.getNowISO()
-        }
-      };
-      UI.showToast(`Isha ${isDone ? 'marked incomplete' : 'completed (Masjid) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
+    }
     // 2. Tahajjud
-    else if (lowerName.includes('tahajjud') || routine.anchor === 'relative-pre-fajr') {
+    else if (routineId === 'routine-tahajjud') {
       const isDone = log.tahajjud === 'COMPLETED';
       updates.tahajjud = isDone ? 'MISSED' : 'COMPLETED';
       UI.showToast(`Tahajjud ${isDone ? 'marked missed' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
-    // 3. Morning Qur’an Tafsir
-    else if (lowerName.includes('qur') && (lowerName.includes('morning') || lowerName.includes('tafsir') || routine.anchor === 'after-fajr')) {
+    }
+    // 3. Morning Qur’an Tafsir & Memorization
+    else if (routineId === 'routine-quran-am') {
       const isDone = log.quranTafsir === 'COMPLETED';
       updates.quranTafsir = isDone ? 'NOT_COMPLETED' : 'COMPLETED';
       UI.showToast(`Morning Qur’an Tafsir ${isDone ? 'marked incomplete' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
+    }
     // 4. Evening Qur’an Recitation
-    else if (lowerName.includes('qur') && (lowerName.includes('evening') || lowerName.includes('recitation') || routine.anchor === 'after-maghrib')) {
+    else if (routineId === 'routine-quran-pm') {
       const isDone = log.quranRecitation === 'COMPLETED';
       updates.quranRecitation = isDone ? 'NOT_COMPLETED' : 'COMPLETED';
       UI.showToast(`Evening Qur’an Recitation ${isDone ? 'marked incomplete' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
-    // 5. ADCD Class
-    else if (lowerName.includes('adcd')) {
+    }
+    // 5. ADCD Offensive Security Class
+    else if (routineId === 'routine-adcd') {
       const isDone = log.adcdAttended === 'ATTENDED';
       updates.adcdAttended = isDone ? 'NOT_ATTENDED' : 'ATTENDED';
-      UI.showToast(`ADCD Class ${isDone ? 'marked not attended' : 'marked attended ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
-    // 6. Gym Session
-    else if (lowerName.includes('gym')) {
+      UI.showToast(`ADCD Class ${isDone ? 'marked not attended' : 'attended ✓'}`, isDone ? 'info' : 'success', 2000);
+    }
+    // 6. Gym Workout Session
+    else if (routineId === 'routine-gym') {
       const isDone = Boolean(log.gymAttended);
       updates.gymAttended = !isDone;
       UI.showToast(`Gym Workout ${isDone ? 'marked unattended' : 'completed ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
+    }
     // 7. Cyber Deep Work (Toggles 4h completed target)
-    else if (lowerName.includes('cyber')) {
+    else if (routineId === 'routine-cyber-work') {
       const targetSecs = CONFIG.TARGETS.CYBER_DAILY_SECONDS || 14400;
       const isDone = (log.cyberSeconds || 0) >= targetSecs;
       updates.cyberSeconds = isDone ? 0 : targetSecs;
-      UI.showToast(`Cyber Deep Work ${isDone ? 'reset' : 'completed (4h) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
-    // 8. English Practice (Toggles 1h target)
-    else if (lowerName.includes('english')) {
+      UI.showToast(`Cyber Deep Work ${isDone ? 'reset to 0h' : 'completed (4h) ✓'}`, isDone ? 'info' : 'success', 2000);
+    }
+    // 8. English Communication & Practice (Toggles 1h target)
+    else if (routineId === 'routine-english') {
       const targetSecs = CONFIG.TARGETS.ENGLISH_DAILY_SECONDS || 3600;
       const isDone = (log.englishSeconds || 0) >= targetSecs;
       updates.englishSeconds = isDone ? 0 : targetSecs;
-      UI.showToast(`English Practice ${isDone ? 'reset' : 'completed (1h) ✓'}`, isDone ? 'info' : 'success', 2000);
-    } 
-    // 9. General / Custom Routine (Breakfast, Commute, Review, etc.)
+      UI.showToast(`English Practice ${isDone ? 'reset to 0m' : 'completed (1h) ✓'}`, isDone ? 'info' : 'success', 2000);
+    }
+    // 9. Daily Review & Sleep Wind Down
+    else if (routineId === 'routine-review-sleep') {
+      const isDone = customRoutines.includes('routine-review-sleep') || Boolean(log.sleepHours);
+      if (isDone) {
+        customRoutines = customRoutines.filter(id => id !== 'routine-review-sleep');
+        UI.showToast('Daily Review & Sleep Wind Down marked incomplete', 'info', 2000);
+      } else {
+        customRoutines.push('routine-review-sleep');
+        UI.showToast('Daily Review & Sleep Wind Down completed ✓', 'success', 2000);
+      }
+      updates.customRoutines = customRoutines;
+    }
+    // 10. General / Custom Routines (Commute In, Commute Out, Breakfast, Cyber Rev, etc.)
     else {
-      if (isCustomCompleted) {
+      if (customRoutines.includes(routineId)) {
         customRoutines = customRoutines.filter(id => id !== routineId);
         UI.showToast(`${routine.name} marked incomplete`, 'info', 2000);
       } else {
@@ -333,7 +390,6 @@ const DashboardModule = {
       updates.customRoutines = customRoutines;
     }
 
-    // Save and re-render
     StorageService.saveDayLog(todayISO, updates);
     UI.vibrate(10);
     this.renderDashboard();
@@ -428,19 +484,15 @@ const DashboardModule = {
 
     container.innerHTML = timeline.map(item => {
       const isCurrent = currentMins >= item.startMins && currentMins < item.endMins;
-      const isPast = currentMins >= item.endMins;
+      const statusSymbol = item.isCompleted ? '✓' : (isCurrent ? '→' : '○');
+      const statusClass = item.isCompleted ? 'schedule-completed' : (isCurrent ? 'schedule-current' : 'schedule-upcoming');
+      const highlightStyle = isCurrent ? 'background-color: var(--bg-surface-elevated); border-left: 3px solid var(--accent-primary); padding-left: 10px; margin: 4px 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;' : '';
 
-      let statusSymbol = '○';
-      let statusClass = 'schedule-upcoming';
-      let highlightStyle = '';
-
-      if (item.isCompleted) {
-        statusSymbol = '✓';
-        statusClass = 'schedule-completed';
-      } else if (isCurrent) {
-        statusSymbol = '→';
-        statusClass = 'schedule-current';
-        highlightStyle = 'background-color: var(--bg-surface-elevated); border-left: 3px solid var(--accent-primary); padding-left: 10px; margin: 4px 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;';
+      let btnLabel = item.buttonText;
+      let btnClass = item.buttonClass;
+      if (!item.isCompleted && isCurrent) {
+        btnLabel = 'MARK DONE';
+        btnClass = 'btn-primary';
       }
 
       return `
@@ -452,10 +504,10 @@ const DashboardModule = {
             </div>
             <span class="prayer-time" style="margin-left: 20px;">${DateUtils.format12Hour(item.startTimeStr)} – ${DateUtils.format12Hour(item.endTimeStr)}</span>
           </div>
-          <button class="btn ${item.isCompleted ? 'btn-success' : (isCurrent ? 'btn-primary' : 'btn-outline')} btn-sm routine-toggle-btn" 
+          <button class="btn ${btnClass} btn-sm routine-toggle-btn" 
                   data-routine-id="${item.id}"
                   style="min-height: 34px; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); white-space: nowrap;">
-            ${item.isCompleted ? 'DONE ✓' : (isCurrent ? 'MARK DONE' : 'COMPLETE')}
+            ${btnLabel}
           </button>
         </div>
       `;
