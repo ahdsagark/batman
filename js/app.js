@@ -77,7 +77,7 @@ const App = {
   setupServiceWorker() {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js')
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
           .then(reg => {
             console.log('[SW] ServiceWorker registered successfully:', reg.scope);
           })
