@@ -732,8 +732,9 @@ function handlePullAllData(ss) {
           timestamp: row[8] || ""
         });
 
-        if (!data.settings.surahProgress) data.settings.surahProgress = {};
-        data.settings.surahProgress[sNum] = vDone;
+        if (!data.settings.surahProgress) {
+          data.settings.surahProgress = {};
+        }
       }
 
       if (d && tMemo > 0) {

@@ -149,6 +149,23 @@ const StorageService = {
     this.safeSetItem(this.KEYS.SETTINGS, current);
     this.enqueueSync('Settings', 'UPDATE', { id: 'user_settings', ...current });
 
+    // Sync reset for all Surahs
+    if (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.SURAHS)) {
+      CONFIG.SURAHS.forEach(s => {
+        this.enqueueSync('QuranMemorization', 'UPSERT', {
+          id: `surah-${s.number}`,
+          surahNumber: s.number,
+          surahName: s.name,
+          totalVerses: s.verses,
+          versesMemorized: 0,
+          todayMemorized: 0,
+          status: 'NOT_STARTED',
+          date: DateUtils.getTodayISO(),
+          timestamp: DateUtils.getNowISO()
+        });
+      });
+    }
+
     const todayISO = DateUtils.getTodayISO();
     this.saveDayLog(todayISO, { quranMemoCount: 0 });
     return current;
@@ -576,16 +593,11 @@ const StorageService = {
           gasApiToken: localSettings.gasApiToken || cloudData.settings.gasApiToken || 'batman-secret-2026'
         };
 
-        const mergedSurahProgress = {
-          ...(cloudData.settings.surahProgress || {}),
-          ...(localSettings.surahProgress || {})
-        };
-        if (cloudData.settings.surahProgress) {
-          Object.keys(cloudData.settings.surahProgress).forEach(sNum => {
-            const cVal = parseInt(cloudData.settings.surahProgress[sNum], 10) || 0;
-            const lVal = parseInt(mergedSurahProgress[sNum], 10) || 0;
-            mergedSurahProgress[sNum] = Math.max(cVal, lVal);
-          });
+        let mergedSurahProgress = {};
+        if (cloudData.settings.surahProgress && typeof cloudData.settings.surahProgress === 'object') {
+          mergedSurahProgress = { ...cloudData.settings.surahProgress };
+        } else if (localSettings.surahProgress && typeof localSettings.surahProgress === 'object') {
+          mergedSurahProgress = { ...localSettings.surahProgress };
         }
         mergedSettings.surahProgress = mergedSurahProgress;
         this.safeSetItem(this.KEYS.SETTINGS, mergedSettings);
