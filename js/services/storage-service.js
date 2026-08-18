@@ -42,7 +42,7 @@ const StorageService = {
         userHeight: CONFIG.TARGETS.DEFAULT_HEIGHT_CM,
         targetWeight: CONFIG.TARGETS.DEFAULT_WEIGHT_TARGET,
         currentWeight: 62.0,
-        prayerCity: 'Calicut,India',
+        prayerCity: 'Malappuram,India',
         prayerMethod: 'Karachi',
         prayerAsrMethod: 'Shafii',
         activeSurahNumber: 67, // Al-Mulk default

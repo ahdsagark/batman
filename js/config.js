@@ -20,6 +20,7 @@ const CONFIG = {
 
   // City Coordinates Pre-sets (India & Regional)
   CITIES: {
+    'Malappuram,India': { name: 'Malappuram', lat: 11.0510, lng: 76.0711, tz: 5.5 },
     'Calicut,India': { name: 'Calicut (Kozhikode)', lat: 11.2588, lng: 75.7804, tz: 5.5 },
     'Kochi,India': { name: 'Kochi', lat: 9.9312, lng: 76.2673, tz: 5.5 },
     'Trivandrum,India': { name: 'Trivandrum', lat: 8.5241, lng: 76.9366, tz: 5.5 },
