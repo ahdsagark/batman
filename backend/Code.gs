@@ -105,6 +105,22 @@ function sanitizeRowValues(rowArray) {
 }
 
 /**
+ * Delete a row by ID from sheet
+ */
+function deleteRowById(ss, sheetName, id) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return false;
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == id) {
+      sheet.deleteRow(i + 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Handles batch synchronization with strict idempotency (upsert by record ID)
  */
 function handleSyncBatch(ss, items) {
@@ -117,6 +133,12 @@ function handleSyncBatch(ss, items) {
     var recordId = data.id || item.id;
 
     if (!recordId) continue;
+
+    if (item.action === "DELETE") {
+      deleteRowById(ss, table, recordId);
+      results.push({ id: recordId, status: "DELETED" });
+      continue;
+    }
 
     if (table === "DayLogs") {
       syncDayLog(ss, data);

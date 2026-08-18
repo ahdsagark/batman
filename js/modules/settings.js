@@ -302,48 +302,292 @@ const SettingsModule = {
     const routines = StorageService.getRoutines();
     const container = document.createElement('div');
 
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const formatDays = (days) => {
+      if (!Array.isArray(days) || days.length === 7 || days.length === 0) return 'Daily (Mon–Sun)';
+      if (days.length === 5 && !days.includes(0) && !days.includes(6)) return 'Mon–Fri (Weekdays)';
+      if (days.length === 2 && days.includes(0) && days.includes(6)) return 'Sat–Sun (Weekends)';
+      return days.map(d => dayLabels[d] || d).join(', ');
+    };
+
+    const formatAnchor = (anchor) => {
+      const map = {
+        'fixed': 'Fixed Clock',
+        'prayer-fajr': 'Fajr Anchor',
+        'prayer-dhuhr': 'Dhuhr Anchor',
+        'prayer-asr': 'Asr Anchor',
+        'prayer-maghrib': 'Maghrib Anchor',
+        'prayer-isha': 'Isha Anchor',
+        'relative-pre-fajr': 'Pre-Fajr',
+        'after-fajr': 'After Fajr',
+        'after-maghrib': 'After Maghrib'
+      };
+      return map[anchor] || anchor || 'Fixed';
+    };
+
     container.innerHTML = `
-      <div style="max-height: 60vh; overflow-y: auto; margin-bottom: var(--space-4);">
-        ${routines.map(r => `
-          <div class="prayer-row" style="padding: 10px 0;">
-            <div class="prayer-info" style="flex: 1; margin-right: var(--space-2);">
-              <span style="font-weight: 700; color: var(--text-primary); font-size: var(--text-sm);">${r.name}</span>
-              <span class="prayer-time">${DateUtils.format12Hour(r.time)} • ${r.duration}m • ${r.anchor}</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-color);">
+        <span style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">
+          ${routines.length} Scheduled Block${routines.length === 1 ? '' : 's'}
+        </span>
+        <button id="modal-top-add-routine-btn" class="btn btn-primary btn-sm" style="font-weight: 700; padding: 4px 12px; font-size: 11px;">
+          + Add Routine
+        </button>
+      </div>
+
+      <div style="max-height: 55vh; overflow-y: auto; margin-bottom: var(--space-3); padding-right: 2px;">
+        ${routines.length === 0 ? `
+          <div style="padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: var(--text-sm);">
+            No routines configured. Click "Reset Defaults" below.
+          </div>
+        ` : routines.map((r, idx) => `
+          <div class="card" style="margin-bottom: var(--space-2); padding: 12px; border-left: 3px solid ${r.isActive ? 'var(--accent-primary)' : 'var(--border-color)'};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                  <span style="font-size: 11px; font-weight: 800; color: var(--text-muted); font-family: var(--font-mono);">#${idx + 1}</span>
+                  <span style="font-weight: 700; color: var(--text-primary); font-size: var(--text-sm);">${r.name}</span>
+                </div>
+                <div style="font-size: var(--text-xs); color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                  <span style="color: var(--accent-primary); font-weight: 600; font-family: var(--font-mono);">${DateUtils.format12Hour(r.time)}</span>
+                  <span>•</span>
+                  <span>${r.duration || 30} mins</span>
+                  <span>•</span>
+                  <span class="badge badge-neutral" style="font-size: 10px; padding: 1px 6px;">${formatAnchor(r.anchor)}</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                  ${formatDays(r.days)}
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn btn-secondary btn-sm routine-edit-btn" data-id="${r.id}" title="Edit Routine" style="min-height: 30px; padding: 3px 8px; font-size: 11px; font-weight: 700;">
+                    ✏️ Edit
+                  </button>
+                  <button class="btn btn-outline btn-sm routine-delete-btn" data-id="${r.id}" title="Delete Routine" style="min-height: 30px; padding: 3px 8px; font-size: 11px; color: var(--status-error); border-color: rgba(239, 68, 68, 0.4);">
+                    🗑️
+                  </button>
+                </div>
+                <button class="btn ${r.isActive ? 'btn-success' : 'btn-secondary'} btn-sm routine-toggle-active-btn" data-id="${r.id}" style="min-height: 26px; padding: 2px 8px; font-size: 10px; font-weight: 700;">
+                  ${r.isActive ? 'ACTIVE' : 'PAUSED'}
+                </button>
+              </div>
             </div>
-            <button class="btn ${r.isActive ? 'btn-success' : 'btn-secondary'} btn-sm" style="min-height: 38px; min-width: 80px;" onclick="SettingsModule.toggleRoutine('${r.id}')">
-              ${r.isActive ? 'Active' : 'Inactive'}
-            </button>
           </div>
         `).join('')}
       </div>
-      <button id="modal-add-routine-btn" class="btn btn-outline btn-block" style="min-height: 44px;">+ Add Custom Routine Block</button>
+
+      <div style="display: flex; gap: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-3);">
+        <button id="modal-bottom-add-routine-btn" class="btn btn-primary" style="flex: 1; font-weight: 700;">+ Add Routine</button>
+        <button id="modal-reset-routines-btn" class="btn btn-outline" style="font-size: var(--text-xs);">↺ Reset Defaults</button>
+      </div>
     `;
 
-    container.querySelector('#modal-add-routine-btn').addEventListener('click', () => {
-      const name = prompt('Routine Name:');
-      if (!name) return;
-      const time = prompt('Scheduled Time (24h format HH:MM e.g. 14:30):', '14:30');
-      const duration = parseInt(prompt('Duration (minutes):', '30'), 10) || 30;
+    // Event Listeners
+    const handleAdd = () => this.openRoutineEditModal(null);
+    container.querySelector('#modal-top-add-routine-btn').addEventListener('click', handleAdd);
+    container.querySelector('#modal-bottom-add-routine-btn').addEventListener('click', handleAdd);
 
-      const newRoutine = {
-        id: CalcUtils.generateId('routine'),
-        name: ValidationUtils.sanitizeText(name),
-        time: time || '12:00',
-        duration,
-        days: [0, 1, 2, 3, 4, 5, 6],
-        anchor: 'fixed',
-        isActive: true
+    container.querySelector('#modal-reset-routines-btn').addEventListener('click', () => {
+      if (confirm('Reset all schedule routines back to the default 17 transformation routines?')) {
+        StorageService.saveRoutines(CONFIG.DEFAULT_ROUTINES);
+        UI.showToast('Reset to default 17 routines ✓', 'success');
+        this.openRoutinesModal();
+        window.dispatchEvent(new CustomEvent('batman:data-updated'));
+      }
+    });
+
+    container.querySelectorAll('.routine-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        this.openRoutineEditModal(id);
+      });
+    });
+
+    container.querySelectorAll('.routine-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        this.deleteRoutine(id);
+      });
+    });
+
+    container.querySelectorAll('.routine-toggle-active-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        this.toggleRoutine(id);
+      });
+    });
+
+    UI.openSheet('Routines & Schedule Manager', container);
+  },
+
+  openRoutineEditModal(routineId = null) {
+    const isEdit = Boolean(routineId);
+    const routines = StorageService.getRoutines();
+    const existing = isEdit ? routines.find(r => r.id === routineId) : null;
+
+    const routine = existing || {
+      id: `routine-custom-${Date.now()}`,
+      name: '',
+      time: '08:00',
+      duration: 30,
+      days: [0, 1, 2, 3, 4, 5, 6],
+      anchor: 'fixed',
+      isActive: true
+    };
+
+    const container = document.createElement('div');
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const activeDays = Array.isArray(routine.days) ? routine.days : [0, 1, 2, 3, 4, 5, 6];
+
+    container.innerHTML = `
+      <form id="routine-edit-form" style="display: flex; flex-direction: column; gap: var(--space-3);" onsubmit="event.preventDefault();">
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 700;">Routine Name *</label>
+          <input type="text" id="edit-routine-name" class="form-input" required placeholder="e.g. Cybersecurity Deep Work, Gym Session" value="${routine.name || ''}">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700;">Start Time (24h)</label>
+            <input type="time" id="edit-routine-time" class="form-input" value="${routine.time || '08:00'}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700;">Duration (Mins)</label>
+            <input type="number" id="edit-routine-duration" class="form-input" min="5" max="480" step="5" value="${routine.duration || 30}" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 700;">Anchor Rule (Dynamic Timing)</label>
+          <select id="edit-routine-anchor" class="form-select">
+            <option value="fixed" ${routine.anchor === 'fixed' ? 'selected' : ''}>Fixed Clock Time</option>
+            <option value="prayer-fajr" ${routine.anchor === 'prayer-fajr' ? 'selected' : ''}>Fajr Prayer Time</option>
+            <option value="prayer-dhuhr" ${routine.anchor === 'prayer-dhuhr' ? 'selected' : ''}>Dhuhr Prayer Time</option>
+            <option value="prayer-asr" ${routine.anchor === 'prayer-asr' ? 'selected' : ''}>Asr Prayer Time</option>
+            <option value="prayer-maghrib" ${routine.anchor === 'prayer-maghrib' ? 'selected' : ''}>Maghrib Prayer Time</option>
+            <option value="prayer-isha" ${routine.anchor === 'prayer-isha' ? 'selected' : ''}>Isha Prayer Time</option>
+            <option value="relative-pre-fajr" ${routine.anchor === 'relative-pre-fajr' ? 'selected' : ''}>Pre-Fajr (1 Hour Before Fajr / Tahajjud)</option>
+            <option value="after-fajr" ${routine.anchor === 'after-fajr' ? 'selected' : ''}>After Fajr (30 Mins After Fajr)</option>
+            <option value="after-maghrib" ${routine.anchor === 'after-maghrib' ? 'selected' : ''}>After Maghrib (25 Mins After Maghrib)</option>
+          </select>
+          <div class="form-hint">Prayer-anchored routines automatically adjust when calculated prayer times change.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 700;">Active Days</label>
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            ${dayNames.map((name, dayIndex) => {
+              const isSelected = activeDays.includes(dayIndex);
+              return `
+                <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm day-chip-btn" data-day="${dayIndex}" style="min-width: 44px; padding: 6px 8px; font-size: 11px; font-weight: 700;">
+                  ${name}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
+          <div>
+            <div style="font-weight: 700; font-size: var(--text-sm); color: var(--text-primary);">Enable Routine</div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted);">Include in daily schedule and timeline</div>
+          </div>
+          <input type="checkbox" id="edit-routine-active" ${routine.isActive !== false ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-primary);">
+        </div>
+
+        <div style="display: flex; gap: var(--space-2); margin-top: var(--space-3);">
+          <button type="button" id="edit-routine-cancel-btn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+          <button type="button" id="edit-routine-save-btn" class="btn btn-primary" style="flex: 2; font-weight: 700;">
+            ${isEdit ? 'Save Changes ✓' : 'Add Routine Block ✓'}
+          </button>
+        </div>
+      </form>
+    `;
+
+    // Day chip toggles
+    container.querySelectorAll('.day-chip-btn').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const isSelected = chip.classList.contains('btn-primary');
+        if (isSelected) {
+          chip.classList.remove('btn-primary');
+          chip.classList.add('btn-secondary');
+        } else {
+          chip.classList.remove('btn-secondary');
+          chip.classList.add('btn-primary');
+        }
+      });
+    });
+
+    // Cancel Button
+    container.querySelector('#edit-routine-cancel-btn').addEventListener('click', () => {
+      this.openRoutinesModal();
+    });
+
+    // Save Button
+    container.querySelector('#edit-routine-save-btn').addEventListener('click', () => {
+      const nameInput = container.querySelector('#edit-routine-name').value.trim();
+      if (!nameInput) {
+        UI.showToast('Please enter a routine name', 'error');
+        return;
+      }
+
+      const timeInput = container.querySelector('#edit-routine-time').value || '08:00';
+      const durationInput = parseInt(container.querySelector('#edit-routine-duration').value, 10) || 30;
+      const anchorInput = container.querySelector('#edit-routine-anchor').value || 'fixed';
+      const isActiveInput = container.querySelector('#edit-routine-active').checked;
+
+      const selectedDays = [];
+      container.querySelectorAll('.day-chip-btn').forEach(chip => {
+        if (chip.classList.contains('btn-primary')) {
+          selectedDays.push(parseInt(chip.getAttribute('data-day'), 10));
+        }
+      });
+
+      const updatedRoutine = {
+        id: routine.id,
+        name: ValidationUtils.sanitizeText(nameInput),
+        time: timeInput,
+        duration: durationInput,
+        anchor: anchorInput,
+        days: selectedDays.length > 0 ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
+        isActive: isActiveInput,
+        updatedAt: DateUtils.getNowISO()
       };
 
-      const current = StorageService.getRoutines();
-      current.push(newRoutine);
-      StorageService.saveRoutines(current);
-      UI.showToast('Routine block added', 'success');
+      const allRoutines = StorageService.getRoutines();
+      const existingIdx = allRoutines.findIndex(r => r.id === routine.id);
+
+      if (existingIdx >= 0) {
+        allRoutines[existingIdx] = updatedRoutine;
+      } else {
+        allRoutines.push(updatedRoutine);
+      }
+
+      StorageService.saveRoutines(allRoutines);
+      UI.vibrate(10);
+      UI.showToast(`Routine "${updatedRoutine.name}" saved ✓`, 'success');
       this.openRoutinesModal();
       window.dispatchEvent(new CustomEvent('batman:data-updated'));
     });
 
-    UI.openSheet('Daily Schedule Routines', container);
+    UI.openSheet(isEdit ? `Edit Routine` : `New Routine Block`, container);
+  },
+
+  deleteRoutine(routineId) {
+    const routines = StorageService.getRoutines();
+    const routine = routines.find(r => r.id === routineId);
+    if (!routine) return;
+
+    if (confirm(`Delete routine "${routine.name}"?`)) {
+      StorageService.deleteRoutine(routineId);
+      UI.vibrate(12);
+      UI.showToast(`Routine "${routine.name}" deleted`, 'info');
+      this.openRoutinesModal();
+      window.dispatchEvent(new CustomEvent('batman:data-updated'));
+    }
   },
 
   toggleRoutine(routineId) {

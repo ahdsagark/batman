@@ -148,6 +148,13 @@ const StorageService = {
     });
   },
 
+  deleteRoutine(routineId) {
+    const list = this.getRoutines().filter(r => r.id !== routineId);
+    this.safeSetItem(this.KEYS.ROUTINES, list);
+    this.enqueueSync('Routines', 'DELETE', { id: routineId });
+    return list;
+  },
+
   // -------------------------------------------------------------
   // DAY LOGS (Single source of truth for date-based records)
   // -------------------------------------------------------------
