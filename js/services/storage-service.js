@@ -331,9 +331,13 @@ const StorageService = {
 
   saveIELTSRecord(mockData) {
     const records = this.getIELTSRecords();
+    let cleanDate = mockData.date || DateUtils.getTodayISO();
+    if (typeof cleanDate === 'string' && cleanDate.includes('T')) {
+      cleanDate = cleanDate.split('T')[0];
+    }
     const recordWithId = {
       id: mockData.id || CalcUtils.generateId('ielts'),
-      date: mockData.date || DateUtils.getTodayISO(),
+      date: cleanDate,
       listening: mockData.listening,
       reading: mockData.reading,
       writing: mockData.writing,
@@ -648,8 +652,12 @@ const StorageService = {
       if (Array.isArray(cloudData.ielts) && cloudData.ielts.length > 0) {
         const mergedIelts = [...localIelts];
         cloudData.ielts.forEach(cItem => {
-          if (!mergedIelts.some(lItem => lItem.id === cItem.id || (lItem.date === cItem.date && lItem.overall === cItem.overall))) {
-            mergedIelts.push(cItem);
+          const normalizedItem = {
+            ...cItem,
+            date: typeof cItem.date === 'string' && cItem.date.includes('T') ? cItem.date.split('T')[0] : cItem.date
+          };
+          if (!mergedIelts.some(lItem => lItem.id === normalizedItem.id || (lItem.date === normalizedItem.date && lItem.overall === normalizedItem.overall))) {
+            mergedIelts.push(normalizedItem);
           }
         });
         this.safeSetItem(this.KEYS.IELTS, mergedIelts);

@@ -37,6 +37,37 @@ const DateUtils = {
   },
 
   /**
+   * Format date into clean month and day e.g. "18 Aug" or "Aug 18"
+   * Handles ISO timestamps, YYYY-MM-DD, or Date objects
+   * @param {string|Date|number} dateInput
+   * @returns {string} e.g. "Aug 18"
+   */
+  formatMonthDay(dateInput) {
+    if (!dateInput) return '--';
+    let d;
+    if (typeof dateInput === 'string') {
+      const cleanStr = dateInput.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+        const parts = cleanStr.split('-');
+        d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else {
+        d = new Date(cleanStr);
+      }
+    } else {
+      d = new Date(dateInput);
+    }
+
+    if (isNaN(d.getTime())) {
+      return String(dateInput).substring(0, 10);
+    }
+
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  },
+
+  /**
    * Format 24-hour time "13:30" or Date object to 12-hour "1:30 PM"
    * @param {string|Date} time24
    */

@@ -140,7 +140,7 @@ const EnglishModule = {
               <span style="font-weight: 700; color: var(--text-primary);">Overall ${m.overall}</span>
               <span class="prayer-time">L: ${m.listening} | R: ${m.reading} | W: ${m.writing} | S: ${m.speaking}</span>
             </div>
-            <span class="prayer-time">${m.date}</span>
+            <span class="prayer-time">${DateUtils.formatMonthDay(m.date)}</span>
           </div>
         `).join('');
       }
