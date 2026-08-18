@@ -504,9 +504,8 @@ const DashboardModule = {
             </div>
             <span class="prayer-time" style="margin-left: 20px;">${DateUtils.format12Hour(item.startTimeStr)} – ${DateUtils.format12Hour(item.endTimeStr)}</span>
           </div>
-          <button class="btn ${btnClass} btn-sm routine-toggle-btn" 
-                  data-routine-id="${item.id}"
-                  style="min-height: 34px; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); white-space: nowrap;">
+          <button class="btn ${btnClass} routine-toggle-btn" 
+                  data-routine-id="${item.id}">
             ${btnLabel}
           </button>
         </div>

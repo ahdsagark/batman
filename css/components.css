@@ -151,6 +151,28 @@
   border-radius: var(--radius-sm);
 }
 
+/* Uniform Schedule Timeline Buttons on Homepage */
+.routine-toggle-btn {
+  width: 96px !important;
+  min-width: 96px !important;
+  max-width: 96px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  border-radius: var(--radius-sm) !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
 .btn-lg {
   min-height: 50px;
   font-size: var(--text-base);
