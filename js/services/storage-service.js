@@ -166,11 +166,17 @@ const StorageService = {
       if (!Array.isArray(list) || list.length === 0) {
         list = CONFIG.DEFAULT_ROUTINES;
       }
-      return list.map(r => {
-        const d = CONFIG.DEFAULT_ROUTINES.find(def => def.id === r.id);
+      const formatted = list.map(r => {
+        const d = (typeof CONFIG !== 'undefined' && CONFIG.DEFAULT_ROUTINES)
+          ? CONFIG.DEFAULT_ROUTINES.find(def => def.id === r.id)
+          : null;
         const rawTime = r.time || (d ? d.time : '05:00');
-        const parsedMins = DateUtils.parseTimeToMinutes(rawTime);
-        const cleanTime = DateUtils.minutesToHHMM(parsedMins);
+        const parsedMins = typeof DateUtils !== 'undefined' && DateUtils.parseTimeToMinutes
+          ? DateUtils.parseTimeToMinutes(rawTime)
+          : 300;
+        const cleanTime = typeof DateUtils !== 'undefined' && DateUtils.minutesToHHMM
+          ? DateUtils.minutesToHHMM(parsedMins)
+          : rawTime;
         return {
           ...r,
           time: cleanTime,
@@ -179,12 +185,38 @@ const StorageService = {
           isActive: r.isActive !== false && r.active !== false
         };
       });
+
+      // Automatically sort in ascending chronological order of time
+      formatted.sort((a, b) => {
+        const aMins = typeof DateUtils !== 'undefined' && DateUtils.parseTimeToMinutes
+          ? DateUtils.parseTimeToMinutes(a.time)
+          : 0;
+        const bMins = typeof DateUtils !== 'undefined' && DateUtils.parseTimeToMinutes
+          ? DateUtils.parseTimeToMinutes(b.time)
+          : 0;
+        return aMins - bMins;
+      });
+
+      return formatted;
     } catch (e) {
       return CONFIG.DEFAULT_ROUTINES;
     }
   },
 
   saveRoutines(routinesList) {
+    if (Array.isArray(routinesList)) {
+      // Automatically sort in ascending chronological order of time
+      routinesList.sort((a, b) => {
+        const aMins = typeof DateUtils !== 'undefined' && DateUtils.parseTimeToMinutes
+          ? DateUtils.parseTimeToMinutes(a.time)
+          : 0;
+        const bMins = typeof DateUtils !== 'undefined' && DateUtils.parseTimeToMinutes
+          ? DateUtils.parseTimeToMinutes(b.time)
+          : 0;
+        return aMins - bMins;
+      });
+    }
+
     this.safeSetItem(this.KEYS.ROUTINES, routinesList);
     // Enqueue each routine with stable ID for cloud synchronization
     routinesList.forEach(r => {
