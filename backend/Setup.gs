@@ -26,6 +26,18 @@ function setupDatabase() {
       headers: ["id", "date", "status", "timestamp"]
     },
     {
+      name: "SunnahRakat",
+      headers: ["id", "date", "before_fajr", "before_dhuhr", "after_dhuhr", "after_maghrib", "after_isha", "total_rakat", "timestamp"]
+    },
+    {
+      name: "DuhaWitr",
+      headers: ["id", "date", "duha_status", "witr_status", "timestamp"]
+    },
+    {
+      name: "Adhkar",
+      headers: ["id", "date", "morning_adhkar", "evening_adhkar", "sleep_adhkar", "timestamp"]
+    },
+    {
       name: "QuranSessions",
       headers: ["id", "date", "session_type", "status", "timestamp"]
     },
@@ -51,11 +63,27 @@ function setupDatabase() {
     },
     {
       name: "Fitness",
-      headers: ["id", "date", "gym_attended", "weight_kg", "bmi", "timestamp"]
+      headers: ["id", "date", "gym_status", "weight_kg", "bmi", "timestamp"]
+    },
+    {
+      name: "WeightHistory",
+      headers: ["id", "date", "weight_kg", "bmi", "timestamp"]
     },
     {
       name: "Sleep",
       headers: ["id", "date", "duration_hours", "bedtime", "waketime", "timestamp"]
+    },
+    {
+      name: "Commitments",
+      headers: ["id", "created_date", "target_date", "text", "status", "timestamp"]
+    },
+    {
+      name: "Pomodoro",
+      headers: ["id", "date", "category", "focus_minutes", "retrieval_minutes", "restful_minutes", "status", "timestamp"]
+    },
+    {
+      name: "MonthlyGoals",
+      headers: ["id", "month", "goal", "reason", "success_criteria", "completed", "review", "reviewed_at", "updated_at"]
     },
     {
       name: "Goals",
@@ -67,7 +95,7 @@ function setupDatabase() {
     },
     {
       name: "WeeklyReviews",
-      headers: ["id", "week_start_date", "deen_score", "cyber_hours", "english_hours", "gym_count", "avg_sleep", "biggest_win", "biggest_problem", "next_priority", "timestamp"]
+      headers: ["id", "week_start_date", "week_end_date", "deen_score", "cyber_hours", "english_hours", "gym_count", "avg_sleep", "masjid_prayers", "total_prayers", "biggest_win", "biggest_problem", "biggest_achievement", "biggest_weakness", "next_priority", "next_week_commitments", "timestamp"]
     }
   ];
 
@@ -96,5 +124,5 @@ function setupDatabase() {
     } catch(e) {}
   }
 
-  Logger.log("BATMAN Database initialization completed successfully. 15 tabs configured.");
+  Logger.log("BATMAN Database initialization completed successfully. 22 tabs configured.");
 }

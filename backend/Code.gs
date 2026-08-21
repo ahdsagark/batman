@@ -47,7 +47,7 @@ function doPost(e) {
     var payload = request.payload || {};
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 1. Request Authentication (accepts custom script property or default token)
+    // 1. Request Authentication
     var expectedToken = getApiSecret();
     var providedToken = (request.token || "").toString().trim();
     if (providedToken !== expectedToken && providedToken !== "batman-secret-2026") {
@@ -82,7 +82,6 @@ function doPost(e) {
 
 /**
  * Centralized Google Sheets formula injection sanitizer
- * Neutralizes values starting with =, +, -, @ by prefixing with a single quote (')
  */
 function sanitizeSheetValue(val) {
   if (val === null || val === undefined) return "";
@@ -104,9 +103,6 @@ function sanitizeRowValues(rowArray) {
   });
 }
 
-/**
- * Delete a row by ID from sheet
- */
 function deleteRowById(ss, sheetName, id) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) return false;
@@ -142,6 +138,58 @@ function handleSyncBatch(ss, items) {
 
     if (table === "DayLogs") {
       syncDayLog(ss, data);
+    } else if (table === "WeightHistory") {
+      upsertRowById(ss, "WeightHistory", recordId, [
+        recordId,
+        data.date,
+        data.weightKg,
+        data.bmi || "",
+        data.timestamp || new Date().toISOString()
+      ]);
+    } else if (table === "SunnahRakat") {
+      upsertRowById(ss, "SunnahRakat", recordId, [
+        recordId,
+        data.date,
+        data.beforeFajr ? "TRUE" : "FALSE",
+        data.beforeDhuhr ? "TRUE" : "FALSE",
+        data.afterDhuhr ? "TRUE" : "FALSE",
+        data.afterMaghrib ? "TRUE" : "FALSE",
+        data.afterIsha ? "TRUE" : "FALSE",
+        data.totalRakat || 0,
+        data.timestamp || new Date().toISOString()
+      ]);
+    } else if (table === "Commitments") {
+      upsertRowById(ss, "Commitments", recordId, [
+        recordId,
+        data.createdDate || "",
+        data.targetDate || "",
+        data.text || "",
+        data.status || "PENDING",
+        data.timestamp || new Date().toISOString()
+      ]);
+    } else if (table === "Pomodoro") {
+      upsertRowById(ss, "Pomodoro", recordId, [
+        recordId,
+        data.date || "",
+        data.category || "CYBERSECURITY",
+        data.focusMinutes || 25,
+        data.retrievalMinutes || 3,
+        data.restfulMinutes || 3,
+        data.status || "COMPLETED",
+        data.timestamp || new Date().toISOString()
+      ]);
+    } else if (table === "MonthlyGoals") {
+      upsertRowById(ss, "MonthlyGoals", recordId, [
+        recordId,
+        data.month || "",
+        data.goal || "",
+        data.reason || "",
+        data.successCriteria || "",
+        data.completed !== undefined ? (data.completed ? "TRUE" : "FALSE") : "",
+        data.review || "",
+        data.reviewedAt || "",
+        data.updatedAt || new Date().toISOString()
+      ]);
     } else if (table === "IELTS") {
       upsertRowById(ss, "IELTS", recordId, [
         recordId,
@@ -180,14 +228,20 @@ function handleSyncBatch(ss, items) {
       upsertRowById(ss, "WeeklyReviews", recordId, [
         recordId,
         data.weekStartDate,
-        data.deenScore,
-        data.cyberHours,
-        data.englishHours,
-        data.gymCount,
-        data.avgSleep,
-        data.biggestWin,
-        data.biggestProblem,
-        data.nextPriority,
+        data.weekEndDate || "",
+        data.deenScore || 0,
+        data.cyberHours || 0,
+        data.englishHours || 0,
+        data.gymCount || 0,
+        data.avgSleep || 0,
+        data.masjidPrayers || 0,
+        data.totalPrayers || 0,
+        data.biggestWin || data.whatWentWell || "",
+        data.biggestProblem || data.whatWentWrong || "",
+        data.biggestAchievement || "",
+        data.biggestWeakness || "",
+        data.nextPriority || data.whatToChange || "",
+        data.nextWeekCommitments || "",
         data.timestamp || new Date().toISOString()
       ]);
     } else if (table === "QuranMemorization") {
@@ -237,7 +291,7 @@ function syncDayLog(ss, dayData) {
         prayerId,
         dateStr,
         pName,
-        pObj.status || "NOT_COMPLETED",
+        pObj.status || "NOT_RECORDED",
         pObj.location || "",
         pObj.timestamp || now
       ]);
@@ -249,11 +303,56 @@ function syncDayLog(ss, dayData) {
   upsertRowById(ss, "Tahajjud", tahajjudId, [
     tahajjudId,
     dateStr,
-    dayData.tahajjud || "MISSED",
+    dayData.tahajjud || "NOT_RECORDED",
     now
   ]);
 
-  // 3. Quran Sessions (AM Tafsir & PM Recitation)
+  // 3. Duha & Witr
+  var duhaWitrId = "duhawitr-" + dateStr;
+  upsertRowById(ss, "DuhaWitr", duhaWitrId, [
+    duhaWitrId,
+    dateStr,
+    dayData.duha || "NOT_RECORDED",
+    dayData.witr || "NOT_RECORDED",
+    now
+  ]);
+
+  // 4. Adhkar (Morning, Evening, Sleep)
+  var adhkarId = "adhkar-" + dateStr;
+  upsertRowById(ss, "Adhkar", adhkarId, [
+    adhkarId,
+    dateStr,
+    dayData.morningAdhkar || "NOT_RECORDED",
+    dayData.eveningAdhkar || "NOT_RECORDED",
+    dayData.sleepAdhkar || "NOT_RECORDED",
+    now
+  ]);
+
+  // 5. Sunnah Rak'at
+  if (dayData.sunnahRakat) {
+    var s = dayData.sunnahRakat;
+    var sunnahId = "sunnah-" + dateStr;
+    var totalRakat = 0;
+    if (s.beforeFajr) totalRakat += 2;
+    if (s.beforeDhuhr) totalRakat += 4;
+    if (s.afterDhuhr) totalRakat += 2;
+    if (s.afterMaghrib) totalRakat += 2;
+    if (s.afterIsha) totalRakat += 2;
+
+    upsertRowById(ss, "SunnahRakat", sunnahId, [
+      sunnahId,
+      dateStr,
+      s.beforeFajr ? "TRUE" : "FALSE",
+      s.beforeDhuhr ? "TRUE" : "FALSE",
+      s.afterDhuhr ? "TRUE" : "FALSE",
+      s.afterMaghrib ? "TRUE" : "FALSE",
+      s.afterIsha ? "TRUE" : "FALSE",
+      totalRakat,
+      now
+    ]);
+  }
+
+  // 6. Quran Sessions
   var quranAmId = "quran-am-" + dateStr;
   upsertRowById(ss, "QuranSessions", quranAmId, [
     quranAmId,
@@ -272,7 +371,7 @@ function syncDayLog(ss, dayData) {
     now
   ]);
 
-  // 4. ADCD Attendance
+  // 7. ADCD Attendance
   var adcdId = "adcd-" + dateStr;
   upsertRowById(ss, "ADCD", adcdId, [
     adcdId,
@@ -281,18 +380,18 @@ function syncDayLog(ss, dayData) {
     now
   ]);
 
-  // 5. Fitness & Weight
+  // 8. Fitness & Weight
   var fitnessId = "fit-" + dateStr;
   upsertRowById(ss, "Fitness", fitnessId, [
     fitnessId,
     dateStr,
-    dayData.gymAttended ? "TRUE" : "FALSE",
+    dayData.gymStatus || (dayData.gymAttended ? "DONE" : "NOT_RECORDED"),
     dayData.weightKg || "",
     dayData.bmi || "",
     now
   ]);
 
-  // 6. Sleep
+  // 9. Sleep
   var sleepId = "sleep-" + dateStr;
   upsertRowById(ss, "Sleep", sleepId, [
     sleepId,
@@ -303,7 +402,7 @@ function syncDayLog(ss, dayData) {
     now
   ]);
 
-  // 7. Daily Review
+  // 10. Daily Review
   if (dayData.review) {
     var revId = "rev-" + dateStr;
     var rev = dayData.review;
@@ -322,7 +421,7 @@ function syncDayLog(ss, dayData) {
     ]);
   }
 
-  // 8. Cyber Deep Work Duration
+  // 11. Cyber Deep Work Duration
   if (dayData.cyberSeconds !== undefined && dayData.cyberSeconds !== null) {
     var cyberId = "cyber-" + dateStr;
     upsertRowById(ss, "CyberSessions", cyberId, [
@@ -335,7 +434,7 @@ function syncDayLog(ss, dayData) {
     ]);
   }
 
-  // 9. English Practice Duration
+  // 12. English Practice Duration
   if (dayData.englishSeconds !== undefined && dayData.englishSeconds !== null) {
     var engId = "english-" + dateStr;
     upsertRowById(ss, "EnglishSessions", engId, [
@@ -411,18 +510,12 @@ function upsertSetting(ss, key, value) {
   }
 }
 
-/**
- * Helper to build JSON output
- */
 function handleResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/**
- * Universal Date Normalizer: Converts Google Sheets native Date object or ISO string to 'YYYY-MM-DD'
- */
 function normalizeDateStr(val) {
   if (!val) return "";
   if (val instanceof Date) {
@@ -449,9 +542,6 @@ function normalizeDateStr(val) {
   return str;
 }
 
-/**
- * Universal Time Normalizer: Converts Google Sheets native Time/Date object or ISO string to 'HH:MM'
- */
 function normalizeTimeStr(val) {
   if (!val) return "05:00";
   if (val instanceof Date) {
@@ -492,6 +582,10 @@ function handlePullAllData(ss) {
   var data = {
     settings: {},
     dayLogs: {},
+    weightHistory: [],
+    commitments: [],
+    pomodoro: [],
+    monthlyGoals: {},
     ielts: [],
     goals: [],
     routines: [],
@@ -546,13 +640,25 @@ function handlePullAllData(ss) {
       data.dayLogs[dateStr] = {
         date: dateStr,
         prayers: {
-          fajr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          dhuhr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          asr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          maghrib: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          isha: { status: 'NOT_COMPLETED', location: '', timestamp: null }
+          fajr: { status: 'NOT_RECORDED', timestamp: null },
+          dhuhr: { status: 'NOT_RECORDED', timestamp: null },
+          asr: { status: 'NOT_RECORDED', timestamp: null },
+          maghrib: { status: 'NOT_RECORDED', timestamp: null },
+          isha: { status: 'NOT_RECORDED', timestamp: null }
         },
-        tahajjud: 'MISSED',
+        tahajjud: 'NOT_RECORDED',
+        duha: 'NOT_RECORDED',
+        witr: 'NOT_RECORDED',
+        morningAdhkar: 'NOT_RECORDED',
+        eveningAdhkar: 'NOT_RECORDED',
+        sleepAdhkar: 'NOT_RECORDED',
+        sunnahRakat: {
+          beforeFajr: false,
+          beforeDhuhr: false,
+          afterDhuhr: false,
+          afterMaghrib: false,
+          afterIsha: false
+        },
         quranTafsir: 'NOT_COMPLETED',
         quranMemoCount: 0,
         quranRecitation: 'NOT_COMPLETED',
@@ -560,7 +666,7 @@ function handlePullAllData(ss) {
         adcdAttended: 'NOT_ATTENDED',
         cyberSeconds: 0,
         englishSeconds: 0,
-        gymAttended: false,
+        gymStatus: 'NOT_RECORDED',
         weightKg: null,
         bmi: null,
         sleepHours: null,
@@ -583,7 +689,7 @@ function handlePullAllData(ss) {
         var day = getDayLog(d);
         if (day) {
           day.prayers[pName] = {
-            status: row[3] || 'NOT_COMPLETED',
+            status: row[3] || 'NOT_RECORDED',
             location: row[4] || '',
             timestamp: row[5] || null
           };
@@ -601,7 +707,7 @@ function handlePullAllData(ss) {
       var d = row[1];
       if (d) {
         var day = getDayLog(d);
-        if (day) day.tahajjud = row[2] || 'MISSED';
+        if (day) day.tahajjud = row[2] || 'NOT_RECORDED';
       }
     }
   }
@@ -648,7 +754,7 @@ function handlePullAllData(ss) {
       if (d) {
         var day = getDayLog(d);
         if (day) {
-          day.gymAttended = (row[2] === true || row[2] === "TRUE");
+          day.gymStatus = row[2] || 'NOT_RECORDED';
           day.weightKg = row[3] ? parseFloat(row[3]) : null;
           day.bmi = row[4] ? parseFloat(row[4]) : null;
         }
@@ -656,7 +762,42 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 8. Sleep
+  // 8. WeightHistory
+  var weightSheet = ss.getSheetByName("WeightHistory");
+  if (weightSheet) {
+    var weightData = weightSheet.getDataRange().getValues();
+    for (var i = 1; i < weightData.length; i++) {
+      var row = weightData[i];
+      if (!row[0]) continue;
+      data.weightHistory.push({
+        id: row[0],
+        date: normalizeDateStr(row[1]),
+        weightKg: parseFloat(row[2]) || 0,
+        bmi: parseFloat(row[3]) || null,
+        timestamp: row[4] || ""
+      });
+    }
+  }
+
+  // 9. Commitments
+  var commitSheet = ss.getSheetByName("Commitments");
+  if (commitSheet) {
+    var commitData = commitSheet.getDataRange().getValues();
+    for (var i = 1; i < commitData.length; i++) {
+      var row = commitData[i];
+      if (!row[0]) continue;
+      data.commitments.push({
+        id: row[0],
+        createdDate: normalizeDateStr(row[1]),
+        targetDate: normalizeDateStr(row[2]),
+        text: row[3] || "",
+        status: row[4] || "PENDING",
+        timestamp: row[5] || ""
+      });
+    }
+  }
+
+  // 10. Sleep
   var sleepSheet = ss.getSheetByName("Sleep");
   if (sleepSheet) {
     var sleepData = sleepSheet.getDataRange().getValues();
@@ -674,7 +815,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 9. Cyber Sessions
+  // 11. Cyber Sessions
   var cyberSheet = ss.getSheetByName("CyberSessions");
   if (cyberSheet) {
     var cyberData = cyberSheet.getDataRange().getValues();
@@ -689,7 +830,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 10. English Sessions
+  // 12. English Sessions
   var engSheet = ss.getSheetByName("EnglishSessions");
   if (engSheet) {
     var engData = engSheet.getDataRange().getValues();
@@ -704,7 +845,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 11. Quran Memorization
+  // 13. Quran Memorization
   var memoSheet = ss.getSheetByName("QuranMemorization");
   data.quranMemorization = [];
   if (memoSheet) {
@@ -744,7 +885,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 12. Daily Reviews
+  // 14. Daily Reviews
   var revSheet = ss.getSheetByName("DailyReviews");
   if (revSheet) {
     var revData = revSheet.getDataRange().getValues();
@@ -770,7 +911,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 13. IELTS
+  // 15. IELTS
   var ieltsSheet = ss.getSheetByName("IELTS");
   if (ieltsSheet) {
     var ieltsData = ieltsSheet.getDataRange().getValues();
@@ -790,7 +931,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 14. Goals
+  // 16. Goals
   var goalsSheet = ss.getSheetByName("Goals");
   if (goalsSheet) {
     var goalsData = goalsSheet.getDataRange().getValues();
@@ -811,7 +952,7 @@ function handlePullAllData(ss) {
     }
   }
 
-  // 15. Weekly Reviews
+  // 17. Weekly Reviews
   var weeklySheet = ss.getSheetByName("WeeklyReviews");
   if (weeklySheet) {
     var weeklyData = weeklySheet.getDataRange().getValues();
@@ -822,15 +963,21 @@ function handlePullAllData(ss) {
       data.weeklyReviews[weekStart] = {
         id: row[0],
         weekStartDate: weekStart,
-        deenScore: row[2] || 0,
-        cyberHours: row[3] || 0,
-        englishHours: row[4] || 0,
-        gymCount: row[5] || 0,
-        avgSleep: row[6] || 0,
-        biggestWin: row[7] || "",
-        biggestProblem: row[8] || "",
-        nextPriority: row[9] || "",
-        timestamp: row[10] || ""
+        weekEndDate: normalizeDateStr(row[2]),
+        deenScore: row[3] || 0,
+        cyberHours: row[4] || 0,
+        englishHours: row[5] || 0,
+        gymCount: row[6] || 0,
+        avgSleep: row[7] || 0,
+        masjidPrayers: row[8] || 0,
+        totalPrayers: row[9] || 0,
+        biggestWin: row[10] || "",
+        biggestProblem: row[11] || "",
+        biggestAchievement: row[12] || "",
+        biggestWeakness: row[13] || "",
+        nextPriority: row[14] || "",
+        nextWeekCommitments: row[15] || "",
+        timestamp: row[16] || ""
       };
     }
   }

@@ -199,6 +199,64 @@ const DateUtils = {
     const h = String(Math.floor(mins / 60)).padStart(2, '0');
     const m = String(mins % 60).padStart(2, '0');
     return `${h}:${m}`;
+  },
+
+  /**
+   * Get tomorrow in YYYY-MM-DD format
+   * @param {Date} [d=new Date()]
+   * @returns {string}
+   */
+  getTomorrowISO(d = new Date()) {
+    const next = new Date(d);
+    next.setDate(next.getDate() + 1);
+    return this.getTodayISO(next);
+  },
+
+  /**
+   * Get yesterday in YYYY-MM-DD format
+   * @param {Date} [d=new Date()]
+   * @returns {string}
+   */
+  getYesterdayISO(d = new Date()) {
+    const prev = new Date(d);
+    prev.setDate(prev.getDate() - 1);
+    return this.getTodayISO(prev);
+  },
+
+  /**
+   * Add or subtract days from a YYYY-MM-DD date string
+   * @param {string} dateStr 
+   * @param {number} days 
+   * @returns {string}
+   */
+  addDaysISO(dateStr, days) {
+    const parts = dateStr.split('-');
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    d.setDate(d.getDate() + days);
+    return this.getTodayISO(d);
+  },
+
+  /**
+   * Get current month in YYYY-MM format
+   * @param {Date} [d=new Date()]
+   * @returns {string}
+   */
+  getCurrentMonthISO(d = new Date()) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  },
+
+  /**
+   * Format YYYY-MM to readable "August 2026"
+   * @param {string} monthStr 
+   */
+  formatMonthYear(monthStr) {
+    if (!monthStr) return '--';
+    const parts = monthStr.split('-');
+    if (parts.length < 2) return monthStr;
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
 };
 

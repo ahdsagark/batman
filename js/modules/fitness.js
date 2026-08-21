@@ -10,21 +10,17 @@ const FitnessModule = {
     window.addEventListener('batman:tab-switched', (e) => {
       if (e.detail.tab === 'growth') this.renderFitness();
     });
+
+    window.addEventListener('batman:data-updated', () => {
+      this.renderFitness();
+    });
   },
 
   bindEvents() {
-    // Gym Attendance Toggle
+    // Gym Attendance Cycling
     const gymBtn = document.getElementById('gym-toggle-btn');
     if (gymBtn) {
-      gymBtn.addEventListener('click', () => {
-        const todayISO = DateUtils.getTodayISO();
-        const log = StorageService.getDayLog(todayISO);
-        const nextState = !log.gymAttended;
-        StorageService.saveDayLog(todayISO, { gymAttended: nextState });
-        UI.vibrate(10);
-        this.renderFitness();
-        window.dispatchEvent(new CustomEvent('batman:data-updated'));
-      });
+      gymBtn.addEventListener('click', () => this.cycleGym());
     }
 
     // Log Weight Button
@@ -34,25 +30,58 @@ const FitnessModule = {
     }
   },
 
+  cycleGym() {
+    const todayISO = DateUtils.getTodayISO();
+    const log = StorageService.getDayLog(todayISO);
+    const cur = log.gymStatus || (log.gymAttended ? 'DONE' : 'NOT_RECORDED');
+
+    let next = 'DONE';
+    if (cur === 'NOT_RECORDED') next = 'DONE';
+    else if (cur === 'DONE') next = 'REST';
+    else if (cur === 'REST') next = 'MISSED';
+    else if (cur === 'MISSED') next = 'NOT_RECORDED';
+
+    StorageService.saveDayLog(todayISO, {
+      gymStatus: next,
+      gymAttended: (next === 'DONE')
+    });
+
+    UI.vibrate(10);
+    this.renderFitness();
+    window.dispatchEvent(new CustomEvent('batman:data-updated'));
+  },
+
   renderFitness() {
     const todayISO = DateUtils.getTodayISO();
     const log = StorageService.getDayLog(todayISO);
     const settings = StorageService.getSettings();
+    const curGym = log.gymStatus || (log.gymAttended ? 'DONE' : 'NOT_RECORDED');
 
     // 1. Gym Button & Weekly Sessions Count
     const gymBtn = document.getElementById('gym-toggle-btn');
     const gymWeeklyCount = document.getElementById('gym-weekly-count');
 
     if (gymBtn) {
-      gymBtn.textContent = log.gymAttended ? 'ATTENDED ✓' : 'UNLOGGED';
-      gymBtn.className = log.gymAttended ? 'btn btn-success btn-sm' : 'btn btn-secondary btn-sm';
+      if (curGym === 'DONE') {
+        gymBtn.textContent = 'DONE ✓';
+        gymBtn.className = 'btn btn-success btn-sm';
+      } else if (curGym === 'REST') {
+        gymBtn.textContent = 'REST DAY';
+        gymBtn.className = 'btn btn-primary btn-sm';
+      } else if (curGym === 'MISSED') {
+        gymBtn.textContent = 'MISSED';
+        gymBtn.className = 'btn btn-danger btn-sm';
+      } else {
+        gymBtn.textContent = 'NOT RECORDED';
+        gymBtn.className = 'btn btn-secondary btn-sm';
+      }
     }
 
     const past7Days = DateUtils.getPastDaysISO(7);
     const allLogs = StorageService.getDayLogs();
     let weeklyGym = 0;
     past7Days.forEach(d => {
-      if (allLogs[d] && allLogs[d].gymAttended) weeklyGym++;
+      if (allLogs[d] && (allLogs[d].gymStatus === 'DONE' || allLogs[d].gymAttended === true)) weeklyGym++;
     });
 
     if (gymWeeklyCount) {
@@ -92,14 +121,10 @@ const FitnessModule = {
       if (!weightVal || weightVal <= 0) return;
 
       const todayISO = DateUtils.getTodayISO();
-      const height = settings.userHeight || 178;
-      const bmi = CalcUtils.calculateBMI(weightVal, height);
-
-      StorageService.saveDayLog(todayISO, { weightKg: weightVal, bmi });
-      StorageService.saveSettings({ currentWeight: weightVal });
+      const entry = StorageService.saveWeightEntry(weightVal, todayISO);
 
       UI.closeSheet();
-      UI.showToast(`Logged ${weightVal} kg (BMI ${bmi})`, 'success');
+      UI.showToast(`Logged ${weightVal} kg (BMI ${entry.bmi})`, 'success');
       this.renderFitness();
       window.dispatchEvent(new CustomEvent('batman:data-updated'));
     });

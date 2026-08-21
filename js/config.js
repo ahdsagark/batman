@@ -9,7 +9,8 @@ const CONFIG = {
 
   // Default Targets
   TARGETS: {
-    CYBER_DAILY_SECONDS: 4 * 3600, // 4 hours
+    CYBER_DAILY_SECONDS: 4 * 3600, // 4 hours independent deep work
+    ADCD_DAILY_SECONDS: 2 * 3600,  // 2 hours ADCD class duration
     ENGLISH_DAILY_SECONDS: 30 * 60, // 30 mins
     GYM_WEEKLY_SESSIONS: 4,
     SLEEP_DAILY_HOURS: 7.5,
@@ -17,6 +18,23 @@ const CONFIG = {
     DEFAULT_WEIGHT_TARGET: 70.0,
     DEFAULT_HEIGHT_CM: 178
   },
+
+  // Pomodoro Configuration
+  POMODORO: {
+    FOCUS_MINUTES: 25,
+    DEFAULT_RETRIEVAL_MINUTES: 3,
+    REST_MINUTES: 3,
+    CATEGORIES: ['CYBERSECURITY', 'ENGLISH', 'OTHERS']
+  },
+
+  // 12 Daily Sunnah Rak'at Definitions
+  SUNNAH_RAKAT: [
+    { key: 'beforeFajr', label: '2 Before Fajr', rakat: 2, anchor: 'Fajr' },
+    { key: 'beforeDhuhr', label: '4 Before Dhuhr', rakat: 4, anchor: 'Dhuhr' },
+    { key: 'afterDhuhr', label: '2 After Dhuhr', rakat: 2, anchor: 'Dhuhr' },
+    { key: 'afterMaghrib', label: '2 After Maghrib', rakat: 2, anchor: 'Maghrib' },
+    { key: 'afterIsha', label: '2 After Isha', rakat: 2, anchor: 'Isha' }
+  ],
 
   // City Coordinates Pre-sets (India & Regional)
   CITIES: {

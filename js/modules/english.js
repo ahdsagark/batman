@@ -16,6 +16,10 @@ const EnglishModule = {
     window.addEventListener('batman:tab-switched', (e) => {
       if (e.detail.tab === 'growth') this.renderEnglish();
     });
+
+    window.addEventListener('batman:data-updated', () => {
+      this.renderEnglish();
+    });
   },
 
   restoreActiveTimer() {
@@ -48,10 +52,12 @@ const EnglishModule = {
     // Timer Controls
     const startBtn = document.getElementById('english-timer-start-btn');
     const pauseBtn = document.getElementById('english-timer-pause-btn');
+    const resetBtn = document.getElementById('english-timer-reset-btn');
     const stopBtn = document.getElementById('english-timer-stop-btn');
 
     if (startBtn) startBtn.addEventListener('click', () => this.startTimer());
     if (pauseBtn) pauseBtn.addEventListener('click', () => this.pauseTimer());
+    if (resetBtn) resetBtn.addEventListener('click', () => this.resetTimer());
     if (stopBtn) stopBtn.addEventListener('click', () => this.stopTimer());
 
     // IELTS Mock Test Button
@@ -193,7 +199,31 @@ const EnglishModule = {
     });
 
     UI.vibrate(10);
+    UI.showToast('Practice paused', 'info');
     this.updateControlsUI();
+  },
+
+  /**
+   * RESET Timer: Discards ONLY the current active/paused session.
+   * Keeps today's accumulated total completely untouched!
+   */
+  resetTimer() {
+    if (this.timerState === 'STOPPED' && this.sessionElapsedSeconds === 0) return;
+
+    clearInterval(this.timerInterval);
+    this.timerInterval = null;
+    this.timerState = 'STOPPED';
+    this.sessionElapsedSeconds = 0;
+
+    StorageService.clearActiveTimer();
+
+    const displayEl = document.getElementById('english-timer-display');
+    if (displayEl) displayEl.textContent = '00:00:00';
+
+    UI.vibrate(10);
+    UI.showToast('Current session discarded (today total preserved)', 'info');
+    this.updateControlsUI();
+    this.renderEnglish();
   },
 
   stopTimer() {
@@ -227,6 +257,7 @@ const EnglishModule = {
   updateControlsUI() {
     const startBtn = document.getElementById('english-timer-start-btn');
     const pauseBtn = document.getElementById('english-timer-pause-btn');
+    const resetBtn = document.getElementById('english-timer-reset-btn');
     const stopBtn = document.getElementById('english-timer-stop-btn');
 
     if (!startBtn || !pauseBtn || !stopBtn) return;
@@ -234,16 +265,19 @@ const EnglishModule = {
     if (this.timerState === 'RUNNING') {
       startBtn.style.display = 'none';
       pauseBtn.style.display = 'inline-flex';
+      if (resetBtn) resetBtn.style.display = 'inline-flex';
       stopBtn.style.display = 'inline-flex';
     } else if (this.timerState === 'PAUSED') {
       startBtn.style.display = 'inline-flex';
       startBtn.textContent = 'RESUME';
       pauseBtn.style.display = 'none';
+      if (resetBtn) resetBtn.style.display = 'inline-flex';
       stopBtn.style.display = 'inline-flex';
     } else {
       startBtn.style.display = 'inline-flex';
       startBtn.textContent = 'START PRACTICE';
       pauseBtn.style.display = 'none';
+      if (resetBtn) resetBtn.style.display = 'none';
       stopBtn.style.display = 'none';
     }
   },

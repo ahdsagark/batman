@@ -1,7 +1,8 @@
 /**
  * BATMAN — Progress & Transparent Scoring Module
- * Features period filtering (Today, This Week, This Month, 9-Month Overview),
- * discipline streaks, score breakdowns, and responsive SVG micro-charts.
+ * Features multi-period filtering (Today, This Week, This Month, 9-Month Overview),
+ * discipline streaks, Quran memorization breakdown, centralized life analytics,
+ * and responsive SVG charts including Historical Body Weight Progression.
  */
 
 const ProgressModule = {
@@ -50,6 +51,9 @@ const ProgressModule = {
       daysToEvaluate = DateUtils.getPastDaysISO(270).reverse(); // 9-Month transformation
     }
 
+    // Use Centralized Analytics Service
+    const metrics = AnalyticsService.getAggregatedMetrics(daysToEvaluate);
+
     let deenScoreSum = 0;
     let cyberScoreSum = 0;
     let englishScoreSum = 0;
@@ -57,39 +61,15 @@ const ProgressModule = {
     let sleepScoreSum = 0;
     let validDays = 0;
 
-    let totalCyberSeconds = 0;
-    let totalEnglishSeconds = 0;
-    let totalGymCount = 0;
-
-    // Series arrays for SVG charts
-    const cyberSeries = [];
-    const englishSeries = [];
-    const weightSeries = [];
-    const sleepSeries = [];
-
     daysToEvaluate.forEach(dateStr => {
       const log = allLogs[dateStr] || (dateStr === todayISO ? todayLog : null);
-      const cSecs = log ? (log.cyberSeconds || 0) : 0;
-      const eSecs = log ? (log.englishSeconds || 0) : 0;
-      const wKg = log && log.weightKg ? log.weightKg : null;
-      const sHours = log && log.sleepHours ? parseFloat(log.sleepHours) : null;
-
-      cyberSeries.push({ date: dateStr, val: Math.round((cSecs / 3600) * 10) / 10 });
-      englishSeries.push({ date: dateStr, val: Math.round(eSecs / 60) });
-      if (wKg) weightSeries.push({ date: dateStr, val: wKg });
-      if (sHours) sleepSeries.push({ date: dateStr, val: sHours });
-
       if (log) {
         validDays++;
         deenScoreSum += CalcUtils.calculateDeenScore(log);
         cyberScoreSum += CalcUtils.calculateCyberScore(log.cyberSeconds || 0);
         englishScoreSum += CalcUtils.calculateEnglishScore(log.englishSeconds || 0);
-        fitnessScoreSum += log.gymAttended ? 100 : 0;
+        fitnessScoreSum += (log.gymStatus === 'DONE' || log.gymAttended === true) ? 100 : 0;
         sleepScoreSum += CalcUtils.calculateSleepScore(log.sleepHours || 0);
-
-        totalCyberSeconds += cSecs;
-        totalEnglishSeconds += eSecs;
-        if (log.gymAttended) totalGymCount++;
       }
     });
 
@@ -108,7 +88,7 @@ const ProgressModule = {
 
     // 2. Streaks
     const pastDaysForStreaks = DateUtils.getPastDaysISO(90);
-    const tahajjudStreak = CalcUtils.calculateStreak(pastDaysForStreaks, (d) => allLogs[d] && allLogs[d].tahajjud === 'COMPLETED');
+    const tahajjudStreak = CalcUtils.calculateStreak(pastDaysForStreaks, (d) => allLogs[d] && (allLogs[d].tahajjud === 'PRAYED' || allLogs[d].tahajjud === 'COMPLETED'));
     const cyberStreak = CalcUtils.calculateStreak(pastDaysForStreaks, (d) => allLogs[d] && (allLogs[d].cyberSeconds || 0) >= 3600);
     const englishStreak = CalcUtils.calculateStreak(pastDaysForStreaks, (d) => allLogs[d] && (allLogs[d].englishSeconds || 0) >= 900);
     const quranStreak = CalcUtils.calculateStreak(pastDaysForStreaks, (d) => allLogs[d] && (allLogs[d].quranTafsir === 'COMPLETED' || (allLogs[d].quranMemoCount || 0) > 0 || allLogs[d].quranRecitation === 'COMPLETED'));
@@ -126,61 +106,67 @@ const ProgressModule = {
     // 3. Render Quran Memorization Mastery Card
     this.renderQuranProgress();
 
-    // 4. Render Totals and SVG Micro-Charts
+    // 4. Render Historical Body Weight Chart & Metrics
+    const weightProgression = AnalyticsService.getWeightProgression(30);
+
+    // 5. Render Totals and SVG Charts
     const summaryContainer = document.getElementById('progress-summary-content');
     if (summaryContainer) {
-      const hasAnyData = validDays > 0 && (totalCyberSeconds > 0 || totalEnglishSeconds > 0 || totalGymCount > 0 || sleepScoreSum > 0 || deenScoreSum > 0);
+      summaryContainer.innerHTML = `
+        <div class="metric-grid" style="margin-bottom: var(--space-4);">
+          <div class="metric-box">
+            <div class="metric-label">Focused Cyber</div>
+            <div class="metric-value">${metrics.totalCyberHoursFormatted}</div>
+            <div class="metric-subtext">${validDays} day(s) evaluated</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">English Practice</div>
+            <div class="metric-value">${metrics.totalEnglishFormatted}</div>
+            <div class="metric-subtext">${validDays} day(s) evaluated</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Gym Workouts</div>
+            <div class="metric-value">${metrics.gymDoneCount}</div>
+            <div class="metric-subtext">Total attended</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Masjid Prayer Rate</div>
+            <div class="metric-value">${metrics.masjidPct}%</div>
+            <div class="metric-subtext">${metrics.masjidPrayersCount} prayers in masjid</div>
+          </div>
+        </div>
 
-      if (!hasAnyData) {
-        summaryContainer.innerHTML = `
-          <div style="padding: var(--space-4) 0; text-align: center;">
-            <div style="font-size: var(--text-base); font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">No data yet.</div>
-            <div style="font-size: var(--text-xs); color: var(--text-muted);">Your trends and micro-charts will appear after you begin tracking sessions.</div>
+        <!-- SVG Micro-Charts -->
+        <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border: 1px solid var(--border-subtle);">
+          <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
+            <span>CYBERSECURITY HOURS</span>
+            <span style="color: var(--accent-primary);">Target: 4h / day</span>
           </div>
-        `;
-      } else {
-        summaryContainer.innerHTML = `
-          <div class="metric-grid" style="margin-bottom: var(--space-4);">
-            <div class="metric-box">
-              <div class="metric-label">Focused Cyber</div>
-              <div class="metric-value">${DateUtils.formatDurationHoursMins(totalCyberSeconds)}</div>
-              <div class="metric-subtext">${validDays} day(s) evaluated</div>
-            </div>
-            <div class="metric-box">
-              <div class="metric-label">English Practice</div>
-              <div class="metric-value">${DateUtils.formatDurationHoursMins(totalEnglishSeconds)}</div>
-              <div class="metric-subtext">${validDays} day(s) evaluated</div>
-            </div>
-            <div class="metric-box">
-              <div class="metric-label">Gym Sessions</div>
-              <div class="metric-value">${totalGymCount}</div>
-              <div class="metric-subtext">Total attended</div>
-            </div>
-            <div class="metric-box">
-              <div class="metric-label">Discipline Index</div>
-              <div class="metric-value">${Math.round((avgDeen + avgCyber + avgEnglish + avgFitness + avgSleep) / 5)}%</div>
-              <div class="metric-subtext">Balanced Mean</div>
-            </div>
-          </div>
+          ${this.renderBarChartSVG(metrics.timeSeries.cyberHours, 4.0, 'h')}
+        </div>
 
-          <!-- SVG Micro-Charts -->
-          <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3);">
-            <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
-              <span>CYBERSECURITY HOURS</span>
-              <span style="color: var(--accent-primary);">Target: 4h / day</span>
-            </div>
-            ${this.renderBarChartSVG(cyberSeries, 4.0, 'h')}
+        <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border: 1px solid var(--border-subtle);">
+          <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
+            <span>SLEEP RESTORATION</span>
+            <span style="color: var(--status-success);">Target: 7.5h</span>
           </div>
+          ${this.renderLineChartSVG(metrics.timeSeries.sleepHours, 7.5, 'h')}
+        </div>
 
-          <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md);">
-            <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
-              <span>SLEEP RESTORATION</span>
-              <span style="color: var(--status-success);">Target: 7.5h</span>
-            </div>
-            ${this.renderLineChartSVG(sleepSeries, 7.5, 'h')}
+        <!-- Historical Body Weight Chart -->
+        <div style="background-color: var(--bg-surface-elevated); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: var(--space-3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
+            <span>BODY WEIGHT PROGRESSION</span>
+            <span style="color: var(--accent-primary);">Target: ${weightProgression.targetWeight} kg</span>
           </div>
-        `;
-      }
+          ${this.renderWeightChartSVG(weightProgression.records, weightProgression.targetWeight)}
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            <span>Initial: ${weightProgression.initialWeight} kg</span>
+            <span>Current: <strong>${weightProgression.currentWeight} kg</strong></span>
+            <span>Delta: <strong style="color: var(--status-success);">+${weightProgression.weightGainKg} kg</strong></span>
+          </div>
+        </div>
+      `;
     }
   },
 
@@ -324,9 +310,6 @@ const ProgressModule = {
     }
   },
 
-  /**
-   * Generates clean SVG bar chart for mobile
-   */
   renderBarChartSVG(series, targetVal = 4, unit = '') {
     if (!series || series.length === 0) return '<div class="prayer-time">No data</div>';
 
@@ -353,19 +336,15 @@ const ProgressModule = {
 
     return `
       <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: 80px; overflow: visible;">
-        <!-- Target Line -->
         <line x1="0" y1="${targetY}" x2="${width}" y2="${targetY}" stroke="var(--border-strong)" stroke-dasharray="3,3" stroke-width="1.5" />
         ${bars}
       </svg>
     `;
   },
 
-  /**
-   * Generates clean SVG line chart for mobile
-   */
   renderLineChartSVG(series, targetVal = 7.5, unit = '') {
     if (!series || series.length < 2) {
-      return '<div class="prayer-time" style="padding: 10px 0;">Log sleep records to see trend line</div>';
+      return '<div class="prayer-time" style="padding: 10px 0;">Log records to see trend line</div>';
     }
 
     const height = 80;
@@ -387,6 +366,52 @@ const ProgressModule = {
       <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: 80px; overflow: visible;">
         <line x1="0" y1="${targetY}" x2="${width}" y2="${targetY}" stroke="var(--status-success)" stroke-dasharray="3,3" stroke-width="1.5" />
         <polyline fill="none" stroke="var(--status-info)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
+      </svg>
+    `;
+  },
+
+  /**
+   * Generates SVG line graph for Historical Body Weight Progression
+   */
+  renderWeightChartSVG(records, targetWeight = 70.0) {
+    if (!records || records.length === 0) {
+      return '<div class="prayer-time" style="padding: 10px 0;">Log weight entries under Fitness to view your transformation curve</div>';
+    }
+
+    const height = 90;
+    const width = 360;
+    const padding = 12;
+
+    const weights = records.map(r => r.weightKg);
+    const maxW = Math.max(targetWeight + 2, ...weights);
+    const minW = Math.min(58, ...weights);
+
+    const points = records.map((r, i) => {
+      const x = records.length === 1 ? width / 2 : padding + (i / (records.length - 1)) * (width - 2 * padding);
+      const normalized = (r.weightKg - minW) / (maxW - minW);
+      const y = height - padding - (normalized * (height - 2 * padding));
+      return `${x},${y}`;
+    }).join(' ');
+
+    const targetY = height - padding - (((targetWeight - minW) / (maxW - minW)) * (height - 2 * padding));
+
+    return `
+      <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: 90px; overflow: visible;">
+        <!-- Target 70kg Line -->
+        <line x1="0" y1="${targetY}" x2="${width}" y2="${targetY}" stroke="var(--status-success)" stroke-dasharray="4,4" stroke-width="1.5" />
+        <text x="${width - 8}" y="${targetY - 4}" fill="var(--status-success)" font-size="10" font-weight="700" text-anchor="end">${targetWeight} kg Target</text>
+
+        <!-- Progression Line & Points -->
+        <polyline fill="none" stroke="var(--accent-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
+        ${records.map((r, i) => {
+          const x = records.length === 1 ? width / 2 : padding + (i / (records.length - 1)) * (width - 2 * padding);
+          const normalized = (r.weightKg - minW) / (maxW - minW);
+          const y = height - padding - (normalized * (height - 2 * padding));
+          return `
+            <circle cx="${x}" cy="${y}" r="4" fill="var(--accent-primary)" />
+            <text x="${x}" y="${y - 8}" fill="var(--text-primary)" font-size="9" font-family="var(--font-mono)" font-weight="700" text-anchor="middle">${r.weightKg}k</text>
+          `;
+        }).join('')}
       </svg>
     `;
   }

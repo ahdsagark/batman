@@ -32,6 +32,7 @@ const App = {
     if (window.QuranModule) QuranModule.init();
     if (window.CyberModule) CyberModule.init();
     if (window.EnglishModule) EnglishModule.init();
+    if (window.PomodoroModule) PomodoroModule.init();
     if (window.FitnessModule) FitnessModule.init();
     if (window.SleepModule) SleepModule.init();
     if (window.GoalsModule) GoalsModule.init();

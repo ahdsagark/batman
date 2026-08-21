@@ -4,15 +4,22 @@
  */
 
 const StorageService = {
+  SCHEMA_VERSION: 2,
+
   KEYS: {
     SETTINGS: 'batman_settings',
     ROUTINES: 'batman_routines',
     DAY_LOGS: 'batman_day_logs',
+    WEIGHT_HISTORY: 'batman_weight_history',
+    POMODORO: 'batman_pomodoro_sessions',
+    MONTHLY_GOALS: 'batman_monthly_goals',
+    COMMITMENTS: 'batman_commitments',
     IELTS: 'batman_ielts_records',
     GOALS: 'batman_goals',
     WEEKLY_REVIEWS: 'batman_weekly_reviews',
     SYNC_QUEUE: 'batman_sync_queue',
-    ACTIVE_TIMER: 'batman_active_timer'
+    ACTIVE_TIMER: 'batman_active_timer',
+    DATA_VERSION: 'batman_data_version'
   },
 
   /**
@@ -33,7 +40,7 @@ const StorageService = {
   },
 
   /**
-   * Initialize LocalStorage with sensible defaults if empty
+   * Initialize LocalStorage with sensible defaults if empty and run versioned migration
    */
   init() {
     if (!localStorage.getItem(this.KEYS.SETTINGS)) {
@@ -52,7 +59,9 @@ const StorageService = {
         surahProgress: { 67: 0 },
         gasWebAppUrl: '',
         gasApiToken: 'batman-secret-2026',
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        theme: 'dark',
+        pomodoroRetrievalMinutes: 3
       };
       this.saveSettings(defaultSettings);
     }
@@ -69,6 +78,22 @@ const StorageService = {
       this.safeSetItem(this.KEYS.DAY_LOGS, {});
     }
 
+    if (!localStorage.getItem(this.KEYS.WEIGHT_HISTORY)) {
+      this.safeSetItem(this.KEYS.WEIGHT_HISTORY, []);
+    }
+
+    if (!localStorage.getItem(this.KEYS.POMODORO)) {
+      this.safeSetItem(this.KEYS.POMODORO, []);
+    }
+
+    if (!localStorage.getItem(this.KEYS.MONTHLY_GOALS)) {
+      this.safeSetItem(this.KEYS.MONTHLY_GOALS, {});
+    }
+
+    if (!localStorage.getItem(this.KEYS.COMMITMENTS)) {
+      this.safeSetItem(this.KEYS.COMMITMENTS, []);
+    }
+
     if (!localStorage.getItem(this.KEYS.IELTS)) {
       this.safeSetItem(this.KEYS.IELTS, []);
     }
@@ -79,6 +104,103 @@ const StorageService = {
 
     if (!localStorage.getItem(this.KEYS.SYNC_QUEUE)) {
       this.safeSetItem(this.KEYS.SYNC_QUEUE, []);
+    }
+
+    // Run safe, idempotent migration
+    this.runMigration();
+  },
+
+  /**
+   * Idempotent Data Migration Engine (Runs only when schema version increases)
+   */
+  runMigration() {
+    const rawVersion = localStorage.getItem(this.KEYS.DATA_VERSION);
+    const currentVersion = rawVersion ? parseInt(rawVersion, 10) : 1;
+
+    if (currentVersion < this.SCHEMA_VERSION) {
+      console.log(`[StorageService] Migrating data schema from v${currentVersion} to v${this.SCHEMA_VERSION}...`);
+      const allLogs = this.getDayLogs();
+      const weightHistory = this.getWeightHistory();
+      let logsModified = false;
+      let weightsModified = false;
+
+      Object.keys(allLogs).forEach(dateStr => {
+        const log = allLogs[dateStr];
+        if (!log) return;
+
+        // 1. Migrate 5 Prayers
+        if (log.prayers) {
+          ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
+            const pObj = log.prayers[p];
+            if (pObj && typeof pObj === 'object') {
+              if (pObj.status === 'COMPLETED') {
+                if (pObj.location === 'MASJID') pObj.status = 'MASJID';
+                else if (pObj.location === 'HOME') pObj.status = 'HOME';
+                else pObj.status = 'MASJID';
+              } else if (pObj.status === 'NOT_COMPLETED' || !pObj.status) {
+                pObj.status = 'NOT_RECORDED';
+              }
+            }
+          });
+        }
+
+        // 2. Migrate Tahajjud
+        if (log.tahajjud === 'COMPLETED') {
+          log.tahajjud = 'PRAYED';
+        } else if (log.tahajjud === 'NOT_COMPLETED' || !log.tahajjud) {
+          log.tahajjud = 'NOT_RECORDED';
+        }
+
+        // 3. Migrate Gym Status
+        if (log.gymStatus === undefined) {
+          if (log.gymAttended === true) {
+            log.gymStatus = 'DONE';
+          } else {
+            log.gymStatus = 'NOT_RECORDED';
+          }
+        }
+
+        // 4. Default new Deen fields if missing
+        if (log.duha === undefined) log.duha = 'NOT_RECORDED';
+        if (log.witr === undefined) log.witr = 'NOT_RECORDED';
+        if (log.morningAdhkar === undefined) log.morningAdhkar = 'NOT_RECORDED';
+        if (log.eveningAdhkar === undefined) log.eveningAdhkar = 'NOT_RECORDED';
+        if (log.sleepAdhkar === undefined) log.sleepAdhkar = 'NOT_RECORDED';
+        if (!log.sunnahRakat || typeof log.sunnahRakat !== 'object') {
+          log.sunnahRakat = {
+            beforeFajr: false,
+            beforeDhuhr: false,
+            afterDhuhr: false,
+            afterMaghrib: false,
+            afterIsha: false
+          };
+        }
+
+        // 5. Populate initial WeightHistory from historical logs if missing
+        if (log.weightKg && !weightHistory.some(w => w.date === dateStr)) {
+          weightHistory.push({
+            id: `weight-${dateStr}`,
+            date: dateStr,
+            weightKg: parseFloat(log.weightKg),
+            bmi: log.bmi || null,
+            timestamp: log.updatedAt || `${dateStr}T08:00:00.000Z`
+          });
+          weightsModified = true;
+        }
+
+        logsModified = true;
+      });
+
+      if (logsModified) {
+        this.safeSetItem(this.KEYS.DAY_LOGS, allLogs);
+      }
+      if (weightsModified) {
+        weightHistory.sort((a, b) => (a.date > b.date ? 1 : -1));
+        this.safeSetItem(this.KEYS.WEIGHT_HISTORY, weightHistory);
+      }
+
+      localStorage.setItem(this.KEYS.DATA_VERSION, this.SCHEMA_VERSION.toString());
+      console.log(`[StorageService] Migration to v${this.SCHEMA_VERSION} completed successfully.`);
     }
   },
 
@@ -291,17 +413,29 @@ const StorageService = {
   getDayLog(dateStr = DateUtils.getTodayISO()) {
     const allLogs = this.getDayLogs();
     if (!allLogs[dateStr]) {
-      // Default blank daily record
+      // Default blank daily record adhering strictly to V2 canonical schema
       allLogs[dateStr] = {
         date: dateStr,
         prayers: {
-          fajr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          dhuhr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          asr: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          maghrib: { status: 'NOT_COMPLETED', location: '', timestamp: null },
-          isha: { status: 'NOT_COMPLETED', location: '', timestamp: null }
+          fajr: { status: 'NOT_RECORDED', timestamp: null },
+          dhuhr: { status: 'NOT_RECORDED', timestamp: null },
+          asr: { status: 'NOT_RECORDED', timestamp: null },
+          maghrib: { status: 'NOT_RECORDED', timestamp: null },
+          isha: { status: 'NOT_RECORDED', timestamp: null }
         },
-        tahajjud: 'MISSED',
+        tahajjud: 'NOT_RECORDED',
+        duha: 'NOT_RECORDED',
+        witr: 'NOT_RECORDED',
+        morningAdhkar: 'NOT_RECORDED',
+        eveningAdhkar: 'NOT_RECORDED',
+        sleepAdhkar: 'NOT_RECORDED',
+        sunnahRakat: {
+          beforeFajr: false,
+          beforeDhuhr: false,
+          afterDhuhr: false,
+          afterMaghrib: false,
+          afterIsha: false
+        },
         quranTafsir: 'NOT_COMPLETED',
         quranMemoCount: 0,
         quranRecitation: 'NOT_COMPLETED',
@@ -309,10 +443,12 @@ const StorageService = {
         adcdAttended: 'NOT_ATTENDED',
         cyberSeconds: 0,
         englishSeconds: 0,
-        gymAttended: false,
+        gymStatus: 'NOT_RECORDED',
         weightKg: null,
         bmi: null,
         sleepHours: null,
+        bedtime: null,
+        waketime: null,
         review: null,
         updatedAt: DateUtils.getNowISO()
       };
@@ -332,6 +468,190 @@ const StorageService = {
       this.enqueueSync('DayLogs', 'UPSERT', { id: syncId, ...allLogs[dateStr] });
     }
     return allLogs[dateStr];
+  },
+
+  // -------------------------------------------------------------
+  // COMMITMENTS (Sole Canonical Local Store for Daily Commitments)
+  // -------------------------------------------------------------
+  getCommitments() {
+    try {
+      const data = localStorage.getItem(this.KEYS.COMMITMENTS);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  getCommitmentsForDate(targetDate) {
+    const commitments = this.getCommitments();
+    return commitments.filter(c => c.targetDate === targetDate);
+  },
+
+  saveCommitment(commitmentData) {
+    const commitments = this.getCommitments();
+    const newRecord = {
+      id: commitmentData.id || CalcUtils.generateId('commit'),
+      createdDate: commitmentData.createdDate || DateUtils.getTodayISO(),
+      targetDate: commitmentData.targetDate || DateUtils.getTomorrowISO(),
+      text: commitmentData.text || '',
+      status: commitmentData.status || 'PENDING', // 'PENDING' | 'COMPLETED' | 'NOT_COMPLETED'
+      timestamp: DateUtils.getNowISO()
+    };
+
+    const existingIdx = commitments.findIndex(c => c.id === newRecord.id);
+    if (existingIdx >= 0) {
+      commitments[existingIdx] = newRecord;
+    } else {
+      commitments.unshift(newRecord);
+    }
+
+    this.safeSetItem(this.KEYS.COMMITMENTS, commitments);
+    this.enqueueSync('Commitments', 'UPSERT', newRecord);
+    return newRecord;
+  },
+
+  updateCommitmentStatus(id, newStatus) {
+    const commitments = this.getCommitments();
+    const target = commitments.find(c => c.id === id);
+    if (!target) return null;
+
+    target.status = newStatus;
+    target.updatedAt = DateUtils.getNowISO();
+    this.safeSetItem(this.KEYS.COMMITMENTS, commitments);
+    this.enqueueSync('Commitments', 'UPSERT', target);
+    return target;
+  },
+
+  // -------------------------------------------------------------
+  // WEIGHT HISTORY (Canonical Local Store for Long-Term Body Metrics)
+  // -------------------------------------------------------------
+  getWeightHistory() {
+    try {
+      const data = localStorage.getItem(this.KEYS.WEIGHT_HISTORY);
+      const list = data ? JSON.parse(data) : [];
+      return Array.isArray(list) ? list.sort((a, b) => (a.date > b.date ? 1 : -1)) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveWeightEntry(weightKg, dateStr = DateUtils.getTodayISO()) {
+    const history = this.getWeightHistory();
+    const settings = this.getSettings();
+    const height = settings.userHeight || 178;
+    const bmi = CalcUtils.calculateBMI(weightKg, height);
+
+    const recordId = `weight-${dateStr}`;
+    const entry = {
+      id: recordId,
+      date: dateStr,
+      weightKg: parseFloat(weightKg),
+      bmi,
+      timestamp: DateUtils.getNowISO()
+    };
+
+    const idx = history.findIndex(h => h.date === dateStr);
+    if (idx >= 0) {
+      history[idx] = entry;
+    } else {
+      history.push(entry);
+    }
+    history.sort((a, b) => (a.date > b.date ? 1 : -1));
+
+    this.safeSetItem(this.KEYS.WEIGHT_HISTORY, history);
+    this.saveSettings({ currentWeight: parseFloat(weightKg) });
+    this.saveDayLog(dateStr, { weightKg: parseFloat(weightKg), bmi });
+    this.enqueueSync('WeightHistory', 'UPSERT', entry);
+    return entry;
+  },
+
+  // -------------------------------------------------------------
+  // POMODORO SESSIONS (Focus Cycles)
+  // -------------------------------------------------------------
+  getPomodoroSessions() {
+    try {
+      const data = localStorage.getItem(this.KEYS.POMODORO);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  savePomodoroSession(sessionData) {
+    const sessions = this.getPomodoroSessions();
+    const record = {
+      id: sessionData.id || CalcUtils.generateId('pomo'),
+      date: sessionData.date || DateUtils.getTodayISO(),
+      category: sessionData.category || 'CYBERSECURITY',
+      focusMinutes: sessionData.focusMinutes || 25,
+      retrievalMinutes: sessionData.retrievalMinutes || 3,
+      restfulMinutes: sessionData.restfulMinutes || 3,
+      status: sessionData.status || 'COMPLETED', // 'COMPLETED' | 'ABANDONED'
+      timestamp: DateUtils.getNowISO()
+    };
+
+    sessions.unshift(record);
+    this.safeSetItem(this.KEYS.POMODORO, sessions);
+    this.enqueueSync('Pomodoro', 'INSERT', record);
+    return record;
+  },
+
+  // -------------------------------------------------------------
+  // MONTHLY LEARNING GOALS
+  // -------------------------------------------------------------
+  getMonthlyGoals() {
+    try {
+      const data = localStorage.getItem(this.KEYS.MONTHLY_GOALS);
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return {};
+    }
+  },
+
+  getMonthlyGoal(monthStr) {
+    const goals = this.getMonthlyGoals();
+    return goals[monthStr] || null;
+  },
+
+  saveMonthlyGoal(monthStr, goalData) {
+    const goals = this.getMonthlyGoals();
+    const recordWithId = {
+      id: `monthly-${monthStr}`,
+      month: monthStr,
+      goal: goalData.goal || '',
+      reason: goalData.reason || '',
+      successCriteria: goalData.successCriteria || '',
+      completed: goalData.completed !== undefined ? goalData.completed : null,
+      review: goalData.review || null,
+      reviewedAt: goalData.reviewedAt || null,
+      createdAt: goalData.createdAt || DateUtils.getNowISO(),
+      updatedAt: DateUtils.getNowISO()
+    };
+
+    goals[monthStr] = recordWithId;
+    this.safeSetItem(this.KEYS.MONTHLY_GOALS, goals);
+    this.enqueueSync('MonthlyGoals', 'UPSERT', recordWithId);
+    return recordWithId;
+  },
+
+  // -------------------------------------------------------------
+  // SUNNAH RAK'AT SYNC HELPER
+  // -------------------------------------------------------------
+  syncSunnahRakat(dateStr, sunnahData) {
+    const totalRakat = CalcUtils.calculateSunnahTotal(sunnahData);
+    const syncId = `sunnah-${dateStr}`;
+    const payload = {
+      id: syncId,
+      date: dateStr,
+      beforeFajr: Boolean(sunnahData.beforeFajr),
+      beforeDhuhr: Boolean(sunnahData.beforeDhuhr),
+      afterDhuhr: Boolean(sunnahData.afterDhuhr),
+      afterMaghrib: Boolean(sunnahData.afterMaghrib),
+      afterIsha: Boolean(sunnahData.afterIsha),
+      totalRakat,
+      timestamp: DateUtils.getNowISO()
+    };
+    this.enqueueSync('SunnahRakat', 'UPSERT', payload);
   },
 
   // -------------------------------------------------------------
@@ -388,7 +708,7 @@ const StorageService = {
   },
 
   // -------------------------------------------------------------
-  // WEEKLY REVIEWS
+  // WEEKLY REVIEWS (Immutable Historical Snapshots)
   // -------------------------------------------------------------
   getWeeklyReviews() {
     try {
@@ -401,9 +721,11 @@ const StorageService = {
 
   saveWeeklyReview(weekStartDate, reviewData) {
     const reviews = this.getWeeklyReviews();
+    const weekEndDate = DateUtils.addDaysISO ? DateUtils.addDaysISO(weekStartDate, 6) : '';
     const reviewWithId = {
       id: `weekly-${weekStartDate}`,
       weekStartDate,
+      weekEndDate,
       ...reviewData,
       timestamp: DateUtils.getNowISO()
     };
@@ -521,6 +843,7 @@ const StorageService = {
   },
 
   updateSyncUI() {
+    if (typeof document === 'undefined') return;
     const queue = this.getSyncQueue();
     const syncText = document.getElementById('sync-text');
     const syncIndicator = document.getElementById('sync-status');

@@ -4,8 +4,31 @@
 
 const SettingsModule = {
   init() {
+    this.applyCurrentTheme();
     this.loadSettingsToUI();
     this.bindEvents();
+
+    // Listen for OS color scheme changes if system theme selected
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        const settings = StorageService.getSettings();
+        if (settings.theme === 'system') {
+          this.applyCurrentTheme();
+        }
+      });
+    }
+  },
+
+  applyCurrentTheme() {
+    const settings = StorageService.getSettings();
+    const theme = settings.theme || 'dark';
+
+    if (theme === 'system') {
+      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
   },
 
   loadSettingsToUI() {
@@ -15,6 +38,8 @@ const SettingsModule = {
     const heightInput = document.getElementById('setting-user-height');
     const currentWeightInput = document.getElementById('setting-current-weight');
     const weightTargetInput = document.getElementById('setting-target-weight');
+    const themeSelect = document.getElementById('setting-theme-select');
+    const pomodoroRetSelect = document.getElementById('setting-pomo-retrieval');
     const citySelect = document.getElementById('setting-prayer-city');
     const methodSelect = document.getElementById('setting-prayer-method');
     const asrSelect = document.getElementById('setting-prayer-asr-method');
@@ -27,6 +52,8 @@ const SettingsModule = {
     if (heightInput && settings.userHeight) heightInput.value = settings.userHeight;
     if (currentWeightInput && settings.currentWeight) currentWeightInput.value = settings.currentWeight;
     if (weightTargetInput && settings.targetWeight) weightTargetInput.value = settings.targetWeight;
+    if (themeSelect) themeSelect.value = settings.theme || 'dark';
+    if (pomodoroRetSelect) pomodoroRetSelect.value = settings.pomodoroRetrievalMinutes || 3;
     if (citySelect && settings.prayerCity) citySelect.value = settings.prayerCity;
     if (methodSelect && settings.prayerMethod) methodSelect.value = settings.prayerMethod;
     if (asrSelect && settings.prayerAsrMethod) asrSelect.value = settings.prayerAsrMethod;
@@ -74,6 +101,7 @@ const SettingsModule = {
   bindEvents() {
     const inputs = [
       'setting-user-name', 'setting-user-height', 'setting-current-weight', 'setting-target-weight',
+      'setting-theme-select', 'setting-pomo-retrieval',
       'setting-prayer-city', 'setting-prayer-method', 'setting-prayer-asr-method', 'setting-gas-url', 'setting-gas-token'
     ];
 
@@ -287,6 +315,8 @@ const SettingsModule = {
       userHeight: parseFloat(document.getElementById('setting-user-height').value) || 178,
       currentWeight: parseFloat(document.getElementById('setting-current-weight').value) || 62.0,
       targetWeight: parseFloat(document.getElementById('setting-target-weight').value) || 70,
+      theme: document.getElementById('setting-theme-select') ? document.getElementById('setting-theme-select').value : 'dark',
+      pomodoroRetrievalMinutes: document.getElementById('setting-pomo-retrieval') ? parseInt(document.getElementById('setting-pomo-retrieval').value, 10) : 3,
       prayerCity: document.getElementById('setting-prayer-city').value,
       prayerMethod: document.getElementById('setting-prayer-method').value,
       prayerAsrMethod: document.getElementById('setting-prayer-asr-method').value,
@@ -294,6 +324,7 @@ const SettingsModule = {
       gasApiToken: (document.getElementById('setting-gas-token') && document.getElementById('setting-gas-token').value.trim()) ? document.getElementById('setting-gas-token').value.trim() : 'batman-secret-2026'
     };
     StorageService.saveSettings(updated);
+    this.applyCurrentTheme();
     UI.showToast('Settings saved', 'success', 1500);
     window.dispatchEvent(new CustomEvent('batman:settings-updated'));
   },

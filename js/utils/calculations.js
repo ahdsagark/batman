@@ -95,8 +95,8 @@ const CalcUtils = {
   /**
    * Calculate Transparent Deen Score for a given date
    * Weight breakdown:
-   * - 5 Prayers (15% each = 75%)
-   * - Tahajjud (10%)
+   * - 5 Prayers (15% each = 75%) -> Counts MASJID or HOME
+   * - Tahajjud (10%) -> Counts PRAYED
    * - Quran AM (5%) + Memorization (5%)
    * - Quran PM (5%)
    * Total = 100%
@@ -105,17 +105,18 @@ const CalcUtils = {
     if (!dayRecord) return 0;
     let score = 0;
 
-    // 5 Prayers (75 points max, 15 per prayer)
+    // 5 Prayers (75 points max, 15 per on-time prayer)
     const prayers = dayRecord.prayers || {};
     const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
     prayerNames.forEach(p => {
-      if (prayers[p] && prayers[p].status === 'COMPLETED') {
+      const pObj = prayers[p];
+      if (pObj && (pObj.status === 'MASJID' || pObj.status === 'HOME' || pObj.status === 'COMPLETED')) {
         score += 15;
       }
     });
 
     // Tahajjud (10 points)
-    if (dayRecord.tahajjud === 'COMPLETED') {
+    if (dayRecord.tahajjud === 'PRAYED' || dayRecord.tahajjud === 'COMPLETED') {
       score += 10;
     }
 
@@ -138,6 +139,43 @@ const CalcUtils = {
     }
 
     return Math.min(100, Math.round(score));
+  },
+
+  /**
+   * Pure dynamic derivation of 12 Daily Sunnah Rak'at total
+   * @param {Object} sunnahData { beforeFajr, beforeDhuhr, afterDhuhr, afterMaghrib, afterIsha }
+   * @returns {number} 0 to 12
+   */
+  calculateSunnahTotal(sunnahData) {
+    if (!sunnahData || typeof sunnahData !== 'object') return 0;
+    let total = 0;
+    if (sunnahData.beforeFajr) total += 2;
+    if (sunnahData.beforeDhuhr) total += 4;
+    if (sunnahData.afterDhuhr) total += 2;
+    if (sunnahData.afterMaghrib) total += 2;
+    if (sunnahData.afterIsha) total += 2;
+    return Math.min(12, Math.max(0, total));
+  },
+
+  /**
+   * Pure derivation of Cybersecurity Total Investment
+   * Independent Deep Work + ADCD (2h = 7200s if attended)
+   */
+  calculateCyberTotalInvestment(cyberSeconds, adcdAttended = 'NOT_ATTENDED') {
+    const independentSecs = Math.max(0, Math.floor(cyberSeconds || 0));
+    const adcdSecs = (adcdAttended === 'ATTENDED') ? 7200 : 0;
+    const totalSecs = independentSecs + adcdSecs;
+    const target = (typeof CONFIG !== 'undefined' && CONFIG.TARGETS && CONFIG.TARGETS.CYBER_DAILY_SECONDS) ? CONFIG.TARGETS.CYBER_DAILY_SECONDS : 14400;
+
+    return {
+      independentSeconds: independentSecs,
+      adcdSeconds: adcdSecs,
+      totalSeconds: totalSecs,
+      independentFormatted: DateUtils.formatDurationHoursMins(independentSecs),
+      adcdFormatted: DateUtils.formatDurationHoursMins(adcdSecs),
+      totalFormatted: DateUtils.formatDurationHoursMins(totalSecs),
+      independentTargetPct: Math.min(100, Math.round((independentSecs / target) * 100))
+    };
   },
 
   /**

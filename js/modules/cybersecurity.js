@@ -16,6 +16,10 @@ const CyberModule = {
     window.addEventListener('batman:tab-switched', (e) => {
       if (e.detail.tab === 'growth') this.renderCyber();
     });
+
+    window.addEventListener('batman:data-updated', () => {
+      this.renderCyber();
+    });
   },
 
   restoreActiveTimer() {
@@ -62,10 +66,12 @@ const CyberModule = {
     // Timer Controls
     const startBtn = document.getElementById('cyber-timer-start-btn');
     const pauseBtn = document.getElementById('cyber-timer-pause-btn');
+    const resetBtn = document.getElementById('cyber-timer-reset-btn');
     const stopBtn = document.getElementById('cyber-timer-stop-btn');
 
     if (startBtn) startBtn.addEventListener('click', () => this.startTimer());
     if (pauseBtn) pauseBtn.addEventListener('click', () => this.pauseTimer());
+    if (resetBtn) resetBtn.addEventListener('click', () => this.resetTimer());
     if (stopBtn) stopBtn.addEventListener('click', () => this.stopTimer());
   },
 
@@ -74,8 +80,9 @@ const CyberModule = {
     const log = StorageService.getDayLog(todayISO);
     const allLogs = StorageService.getDayLogs();
     const totalSecsToday = log.cyberSeconds || 0;
+    const invest = CalcUtils.calculateCyberTotalInvestment(totalSecsToday, log.adcdAttended);
 
-    // 1. Header Badge
+    // 1. Header Badge (Independent Deep Work)
     const headerBadge = document.getElementById('cyber-header-badge');
     if (headerBadge) {
       const isMet = totalSecsToday >= 14400;
@@ -107,7 +114,7 @@ const CyberModule = {
           <div class="prayer-row" style="margin-bottom: var(--space-3);">
             <div class="prayer-info">
               <span class="prayer-name">ADCD Class (09:30 – 11:30 AM)</span>
-              <span id="adcd-status-desc" class="prayer-time">Mon – Fri Attendance</span>
+              <span id="adcd-status-desc" class="prayer-time">Mon – Fri Attendance (+2h)</span>
             </div>
             <div class="prayer-actions">
               <button id="adcd-toggle-btn" class="btn ${isAttended ? 'btn-success' : 'btn-secondary'} btn-sm" style="min-height: 44px; min-width: 125px; font-weight: 700;">
@@ -129,8 +136,8 @@ const CyberModule = {
       }
     }
 
-    // 3. Deep Work Progress Bar & Percent
-    const pct = Math.min(100, Math.round((totalSecsToday / 14400) * 100));
+    // 3. Deep Work Progress Bar & Percent (Evaluates Independent Target 4h strictly)
+    const pct = invest.independentTargetPct;
     const progTextEl = document.getElementById('cyber-progress-percentage');
     const progBarEl = document.getElementById('cyber-progress-bar');
     if (progTextEl) {
@@ -158,7 +165,17 @@ const CyberModule = {
       }
     }
 
-    // 5. Calculate Weekly, Monthly, and 9-Month Aggregations
+    // 5. Total Cybersecurity Investment Breakdown
+    const totalInvestEl = document.getElementById('cyber-total-investment-val');
+    const totalInvestSubEl = document.getElementById('cyber-total-investment-sub');
+    if (totalInvestEl) {
+      totalInvestEl.textContent = invest.totalFormatted;
+    }
+    if (totalInvestSubEl) {
+      totalInvestSubEl.textContent = `${invest.independentFormatted} Independent + ${invest.adcdFormatted} ADCD`;
+    }
+
+    // 6. Calculate Weekly, Monthly, and 9-Month Aggregations
     let weeklySecs = 0;
     let monthlySecs = 0;
     let total9MSecs = 0;
@@ -185,7 +202,7 @@ const CyberModule = {
     if (statMonth) statMonth.textContent = `${(monthlySecs / 3600).toFixed(1)}h`;
     if (stat9m) stat9m.textContent = `${(total9MSecs / 3600).toFixed(1)}h`;
 
-    // 6. Update Timer Display & Controls UI
+    // 7. Update Timer Display & Controls UI
     const displayEl = document.getElementById('cyber-timer-display');
     if (displayEl) {
       displayEl.textContent = DateUtils.formatDigitalTimer(this.sessionElapsedSeconds);
@@ -236,6 +253,29 @@ const CyberModule = {
     this.updateControlsUI();
   },
 
+  /**
+   * RESET Timer: Discards ONLY the current active/paused session.
+   * Keeps today's accumulated total completely untouched!
+   */
+  resetTimer() {
+    if (this.timerState === 'STOPPED' && this.sessionElapsedSeconds === 0) return;
+
+    clearInterval(this.timerInterval);
+    this.timerInterval = null;
+    this.timerState = 'STOPPED';
+    this.sessionElapsedSeconds = 0;
+
+    StorageService.clearActiveTimer();
+
+    const displayEl = document.getElementById('cyber-timer-display');
+    if (displayEl) displayEl.textContent = '00:00:00';
+
+    UI.vibrate(10);
+    UI.showToast('Current session discarded (today total preserved)', 'info');
+    this.updateControlsUI();
+    this.renderCyber();
+  },
+
   stopTimer() {
     if (this.timerState === 'STOPPED') return;
 
@@ -269,6 +309,7 @@ const CyberModule = {
   updateControlsUI() {
     const startBtn = document.getElementById('cyber-timer-start-btn');
     const pauseBtn = document.getElementById('cyber-timer-pause-btn');
+    const resetBtn = document.getElementById('cyber-timer-reset-btn');
     const stopBtn = document.getElementById('cyber-timer-stop-btn');
 
     if (!startBtn || !pauseBtn || !stopBtn) return;
@@ -277,16 +318,19 @@ const CyberModule = {
       startBtn.style.display = 'none';
       pauseBtn.style.display = 'inline-flex';
       pauseBtn.textContent = 'PAUSE';
+      if (resetBtn) resetBtn.style.display = 'inline-flex';
       stopBtn.style.display = 'inline-flex';
     } else if (this.timerState === 'PAUSED') {
       startBtn.style.display = 'inline-flex';
       startBtn.textContent = 'RESUME';
       pauseBtn.style.display = 'none';
+      if (resetBtn) resetBtn.style.display = 'inline-flex';
       stopBtn.style.display = 'inline-flex';
     } else {
       startBtn.style.display = 'inline-flex';
       startBtn.textContent = 'START SESSION';
       pauseBtn.style.display = 'none';
+      if (resetBtn) resetBtn.style.display = 'none';
       stopBtn.style.display = 'none';
     }
   }
