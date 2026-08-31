@@ -126,3 +126,22 @@ function setupDatabase() {
 
   Logger.log("BATMAN Database initialization completed successfully. 22 tabs configured.");
 }
+
+/**
+ * Utility to clear all data rows across all tabs while preserving headers.
+ * Run this in Apps Script ONLY if you want to wipe all cloud data and start fresh!
+ */
+function clearAllSpreadsheetData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+
+  sheets.forEach(function(sheet) {
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.deleteRows(2, lastRow - 1);
+      Logger.log("Cleared data in sheet: " + sheet.getName());
+    }
+  });
+
+  Logger.log("All spreadsheet data rows cleared. Column headers preserved.");
+}

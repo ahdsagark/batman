@@ -1070,6 +1070,11 @@ const StorageService = {
     localStorage.removeItem(this.KEYS.WEEKLY_REVIEWS);
     localStorage.removeItem(this.KEYS.SYNC_QUEUE);
     localStorage.removeItem(this.KEYS.ACTIVE_TIMER);
+    localStorage.removeItem(this.KEYS.WEIGHT_HISTORY);
+    localStorage.removeItem(this.KEYS.POMODORO);
+    localStorage.removeItem(this.KEYS.MONTHLY_GOALS);
+    localStorage.removeItem(this.KEYS.COMMITMENTS);
+    localStorage.removeItem(this.KEYS.DATA_VERSION);
   }
 };
 
