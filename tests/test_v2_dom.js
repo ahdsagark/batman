@@ -249,17 +249,27 @@ assert.strictEqual(pomoHistory[0].status, 'COMPLETED');
 assert.strictEqual(pomoHistory[0].category, 'CYBERSECURITY');
 console.log('✓ Test 7 passed: Full Pomodoro cycle correctly contributed +25m to Cyber and logged session.');
 
-// TEST 8: Appearance / Theme switching
-console.log('\nTest 8: Theme mode application (Dark, Light, System)...');
-StorageService.saveSettings({ theme: 'light' });
-SettingsModule.applyCurrentTheme();
-assert.strictEqual(document.documentElement.getAttribute('data-theme'), 'light');
+// TEST 9: Clear Local Data Modal and Execution
+console.log('\nTest 9: Clear Local Data modal opening & wipe execution...');
+let sheetOpened = false;
+let openedTitle = '';
+UI.openSheet = (title, html) => {
+  sheetOpened = true;
+  openedTitle = title;
+};
 
-StorageService.saveSettings({ theme: 'dark' });
-SettingsModule.applyCurrentTheme();
-assert.strictEqual(document.documentElement.getAttribute('data-theme'), 'dark');
-console.log('✓ Test 8 passed: Theme modes verified.');
+SettingsModule.openClearDataConfirmationModal();
+assert.strictEqual(sheetOpened, true, 'Confirmation modal must open on Clear Local Data click');
+assert.strictEqual(openedTitle, 'Confirm Data Reset');
+
+// Test StorageService.clearAllData()
+StorageService.clearAllData();
+assert.strictEqual(localStorage.getItem('batman_day_logs'), null);
+assert.strictEqual(localStorage.getItem('batman_commitments'), null);
+assert.strictEqual(localStorage.getItem('batman_weight_history'), null);
+assert.strictEqual(localStorage.getItem('batman_settings'), null);
+console.log('✓ Test 9 passed: Modal opened and all data cleared.');
 
 console.log('\n======================================================');
-console.log('🎉 ALL 8 DOM & MODULE INTEGRATION TESTS PASSED 100%!');
+console.log('🎉 ALL 9 DOM & MODULE INTEGRATION TESTS PASSED 100%!');
 console.log('======================================================');

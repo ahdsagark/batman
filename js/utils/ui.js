@@ -61,6 +61,15 @@ const UI = {
     document.body.style.overflow = '';
   },
 
+  // Aliases for compatibility
+  showBottomSheet(title, contentHTML) {
+    this.openSheet(title, contentHTML);
+  },
+
+  closeBottomSheet() {
+    this.closeSheet();
+  },
+
   /**
    * Switch between primary navigation tabs
    * @param {string} targetViewId 
