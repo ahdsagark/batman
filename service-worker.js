@@ -3,7 +3,7 @@
  * Resilient Offline-First & Stale-While-Revalidate Engine
  */
 
-const CACHE_NAME = 'batman-pwa-v2';
+const CACHE_NAME = 'batman-pwa-v2.1';
 
 const STATIC_ASSETS = [
   '/',
@@ -23,12 +23,14 @@ const STATIC_ASSETS = [
   '/js/services/prayer-service.js',
   '/js/services/notification-service.js',
   '/js/services/sync-service.js',
+  '/js/services/analytics-service.js',
   '/js/services/api.js',
   '/js/modules/dashboard.js',
   '/js/modules/deen.js',
   '/js/modules/quran.js',
   '/js/modules/cybersecurity.js',
   '/js/modules/english.js',
+  '/js/modules/pomodoro.js',
   '/js/modules/fitness.js',
   '/js/modules/sleep.js',
   '/js/modules/goals.js',
